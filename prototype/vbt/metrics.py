@@ -19,8 +19,8 @@ class RepMetrics:
     mean_propulsive_velocity: float   # m/s, concentric until the bar decelerates faster than gravity
     peak_velocity: float              # m/s
     time_to_peak_velocity: float      # s from concentric start
-    mean_power: float                 # W, concentric
-    peak_power: float                 # W
+    mean_power: float                 # W, concentric, bar load only
+    peak_power: float                 # W, bar load only
     concentric_distance: float        # m
     concentric_duration: float        # s
     eccentric_distance: float | None  # m
@@ -28,15 +28,26 @@ class RepMetrics:
     eccentric_mean_velocity: float | None  # m/s, as a positive number
     eccentric_peak_velocity: float | None  # m/s, as a positive number
     horizontal_displacement: float    # m, largest left-right bar travel during the concentric
+    # Bar load plus the moving share of body mass. None when no body mass is given.
+    system_mean_power: float | None = None  # W
+    system_peak_power: float | None = None  # W
 
 
-def rep_metrics(kin: Kinematics, rep: Rep, mass_kg: float) -> RepMetrics:
-    """Compute one rep's metrics. mass_kg is the moving system mass used for force and power."""
+def rep_metrics(kin: Kinematics, rep: Rep, load_kg: float, body_mass_kg: float | None = None,
+                body_mass_fraction: float = 1.0) -> RepMetrics:
+    """Compute one rep's metrics.
+
+    Bar power uses load_kg alone. When body_mass_kg is given, system power also counts
+    body_mass_fraction of it as moving with the bar (1.0 for pull-ups and dips; squats and
+    deadlifts are often set lower, since the shanks and feet barely move).
+    """
     c = rep.concentric.slice()
     v, a = kin.v[c], kin.a[c]
     dt = 1.0 / kin.fps
-    force = mass_kg * (a + G)
-    power = force * v
+    power = load_kg * (a + G) * v
+    system_power = None
+    if body_mass_kg:
+        system_power = (load_kg + body_mass_kg * body_mass_fraction) * (a + G) * v
     i_peak = int(np.argmax(v))
 
     # Propulsive phase ends the first time after peak velocity that the bar decelerates faster than g.
@@ -70,6 +81,8 @@ def rep_metrics(kin: Kinematics, rep: Rep, mass_kg: float) -> RepMetrics:
         eccentric_mean_velocity=ecc_mean,
         eccentric_peak_velocity=ecc_peak,
         horizontal_displacement=float(np.max(xs) - np.min(xs)),
+        system_mean_power=float(np.mean(system_power)) if system_power is not None else None,
+        system_peak_power=float(np.max(system_power)) if system_power is not None else None,
     )
 
 
@@ -77,7 +90,7 @@ def rep_metrics(kin: Kinematics, rep: Rep, mass_kg: float) -> RepMetrics:
 class SetMetrics:
     exercise: str
     load_kg: float
-    system_mass_kg: float
+    system_mass_kg: float         # load plus the counted share of body mass
     reps: list[RepMetrics]
     rep_count: int
     mean_velocity: float          # average of rep mean velocities
@@ -96,6 +109,8 @@ class SetMetrics:
     mean_concentric_distance: float
     mean_eccentric_distance: float | None
     volume_load_kg: float         # reps x load
+    system_mean_power: float | None = None       # average of rep system mean powers
+    system_peak_power: float | None = None       # highest rep system peak power
     velocity_loss_threshold_pct: float | None = None
     threshold_reached_at_rep: int | None = None  # first rep whose loss passed the threshold
     below_target_reps: list[int] = field(default_factory=list)
@@ -123,6 +138,7 @@ def set_summary(exercise: str, load_kg: float, system_mass_kg: float, reps: list
     if target_mean_velocity is not None:
         lo, hi = target_mean_velocity
         below = [r.rep for r in reps if not lo <= r.mean_velocity <= hi]
+    has_system = reps[0].system_mean_power is not None
 
     return SetMetrics(
         exercise=exercise, load_kg=load_kg, system_mass_kg=system_mass_kg, reps=reps,
@@ -138,6 +154,8 @@ def set_summary(exercise: str, load_kg: float, system_mass_kg: float, reps: list
         mean_concentric_distance=float(cd.mean()),
         mean_eccentric_distance=float(ed.mean()) if ed.size else None,
         volume_load_kg=float(load_kg * len(reps)),
+        system_mean_power=float(np.mean([r.system_mean_power for r in reps])) if has_system else None,
+        system_peak_power=float(max(r.system_peak_power for r in reps)) if has_system else None,
         velocity_loss_threshold_pct=velocity_loss_threshold_pct,
         threshold_reached_at_rep=reached,
         below_target_reps=below,
@@ -156,6 +174,8 @@ class ExerciseSummary:
     total_concentric_distance: float
     total_eccentric_distance: float
     volume_load_kg: float
+    system_mean_power: float | None = None
+    system_peak_power: float | None = None
 
 
 def exercise_summary(sets: list[SetMetrics]) -> ExerciseSummary:
@@ -171,6 +191,10 @@ def exercise_summary(sets: list[SetMetrics]) -> ExerciseSummary:
         total_concentric_distance=float(sum(s.total_concentric_distance for s in sets)),
         total_eccentric_distance=float(sum(s.total_eccentric_distance for s in sets)),
         volume_load_kg=float(sum(s.volume_load_kg for s in sets)),
+        system_mean_power=(float(np.mean([r.system_mean_power for r in reps]))
+                           if all(r.system_mean_power is not None for r in reps) else None),
+        system_peak_power=(float(max(r.system_peak_power for r in reps))
+                           if all(r.system_peak_power is not None for r in reps) else None),
     )
 
 

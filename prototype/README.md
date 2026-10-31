@@ -20,12 +20,17 @@ Measures each rep of a set from a side-view video of the bar, using the plate fa
 | Mean velocity (MV) | Average vertical velocity over the concentric phase |
 | Mean propulsive velocity (MPV) | Average over the concentric until the bar decelerates faster than gravity |
 | Peak velocity (PV) | Highest vertical velocity in the concentric phase |
-| Mean / peak power | Average / highest of force x velocity over the concentric phase |
+| Mean / peak power (bar) | Average / highest of force x velocity over the concentric phase, using bar load |
+| Mean / peak power (system) | The same, using bar load plus the moving share of body mass |
 | Concentric / eccentric distance | Vertical bar travel on the way up / down |
 | Velocity loss | (best rep MV - last rep MV) / best rep MV |
 | Volume load | Reps x load, summed over sets and exercises |
 
-Power uses bar load by default. `--body-mass` with `--body-mass-fraction` adds part of body mass.
+Bar power is always reported. Pass `--body-mass` to also report system power, which counts
+bar load plus body mass. `--body-mass-fraction` (default 1.0) sets how much of body mass moves with
+the bar: 1.0 suits pull-ups and dips, and a lower value can suit squats and deadlifts, where the
+shanks and feet barely move. Both use the bar's measured velocity, so for system power this assumes
+the counted body mass moves at bar speed.
 
 ## Setup
 
@@ -38,7 +43,7 @@ python3 -m venv .venv
 ## Analyze a set
 
 ```
-.venv/bin/python -m vbt.analyze my_squat.mov --exercise squat --load 100 --vl-threshold 20 --out results
+.venv/bin/python -m vbt.analyze my_squat.mov --exercise squat --load 100 --body-mass 85 --vl-threshold 20 --out results
 ```
 
 This prints a rep-by-rep table and saves `results/my_squat.json` plus the full trajectory as CSV.
