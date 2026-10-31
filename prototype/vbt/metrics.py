@@ -11,6 +11,20 @@ from .reps import Rep
 
 G = 9.81
 
+# Share of body mass counted as moving with the bar for system power. Squat and deadlift
+# values weight each segment by its travel relative to the bar: head, arms and trunk move
+# about as far as the bar, thighs about half, shanks and feet barely at all.
+BODY_MASS_FRACTION = {
+    "squat": 0.80, "back_squat": 0.80, "front_squat": 0.80, "box_squat": 0.80,
+    "deadlift": 0.80, "sumo_deadlift": 0.80, "trap_bar_deadlift": 0.80,
+    "pull_up": 1.0, "chin_up": 1.0, "dip": 1.0,
+}
+DEFAULT_BODY_MASS_FRACTION = 1.0
+
+
+def body_mass_fraction_for(exercise: str) -> float:
+    return BODY_MASS_FRACTION.get(exercise.lower(), DEFAULT_BODY_MASS_FRACTION)
+
 
 @dataclass
 class RepMetrics:

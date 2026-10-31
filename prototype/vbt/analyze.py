@@ -26,7 +26,7 @@ class Analysis:
 
 def analyze_video(path: str, exercise: str, load_kg: float, *,
                   plate_diameter_m: float = kinematics.STANDARD_PLATE_DIAMETER_M,
-                  body_mass_kg: float | None = None, body_mass_fraction: float = 1.0,
+                  body_mass_kg: float | None = None, body_mass_fraction: float | None = None,
                   cutoff_hz: float = 8.0, fps: float | None = None,
                   velocity_loss_threshold_pct: float | None = None,
                   target_mean_velocity: tuple[float, float] | None = None) -> Analysis:
@@ -34,6 +34,8 @@ def analyze_video(path: str, exercise: str, load_kg: float, *,
     kin = kinematics.from_track(track, plate_diameter_m=plate_diameter_m, cutoff_hz=cutoff_hz)
     found = reps.segment(kin, exercise=exercise)
     # Bar power always; system power (load plus moving body mass) too when body mass is given.
+    if body_mass_fraction is None:
+        body_mass_fraction = metrics.body_mass_fraction_for(exercise)
     system_mass = load_kg + (body_mass_kg or 0.0) * body_mass_fraction
     rep_list = [metrics.rep_metrics(kin, r, load_kg, body_mass_kg, body_mass_fraction) for r in found]
     summary = metrics.set_summary(exercise, load_kg, system_mass, rep_list,
@@ -118,8 +120,9 @@ def main(argv=None) -> None:
                    help="Diameter in meters of the plate facing the camera (default 0.45)")
     p.add_argument("--body-mass", type=float,
                    help="Lifter body mass in kg. Adds system power (load + body mass) to the report")
-    p.add_argument("--body-mass-fraction", type=float, default=1.0,
-                   help="Share of body mass that moves with the bar, for system power (default 1.0)")
+    p.add_argument("--body-mass-fraction", type=float,
+                   help="Share of body mass that moves with the bar, for system power "
+                        "(default by exercise: 0.80 squats and deadlifts, 1.0 otherwise)")
     p.add_argument("--cutoff", type=float, default=8.0, help="Low-pass filter cutoff in Hz")
     p.add_argument("--fps", type=float, help="Override the frame rate stored in the video")
     p.add_argument("--vl-threshold", type=float, help="Velocity-loss threshold in percent")

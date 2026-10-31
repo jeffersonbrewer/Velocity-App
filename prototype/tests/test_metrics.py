@@ -73,3 +73,10 @@ def test_agreement_statistics():
     assert s["bias"] == pytest.approx(0.02)
     assert s["icc"] > 0.9
     assert s["r"] == pytest.approx(1.0)
+
+
+def test_body_mass_fraction_defaults():
+    assert metrics.body_mass_fraction_for("Squat") == 0.80
+    assert metrics.body_mass_fraction_for("deadlift") == 0.80
+    assert metrics.body_mass_fraction_for("pull_up") == 1.0
+    assert metrics.body_mass_fraction_for("bench_press") == 1.0

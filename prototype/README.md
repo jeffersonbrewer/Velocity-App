@@ -27,9 +27,9 @@ Measures each rep of a set from a side-view video of the bar, using the plate fa
 | Volume load | Reps x load, summed over sets and exercises |
 
 Bar power is always reported. Pass `--body-mass` to also report system power, which counts
-bar load plus body mass. `--body-mass-fraction` (default 1.0) sets how much of body mass moves with
-the bar: 1.0 suits pull-ups and dips, and a lower value can suit squats and deadlifts, where the
-shanks and feet barely move. Both use the bar's measured velocity, so for system power this assumes
+bar load plus body mass. `--body-mass-fraction` sets how much of body mass moves with the bar. It
+defaults by exercise: 0.80 for squats and deadlifts (head, arms and trunk count fully, thighs about
+half, shanks and feet not at all) and 1.0 for pull-ups, dips and anything else. Both use the bar's measured velocity, so for system power this assumes
 the counted body mass moves at bar speed.
 
 ## Setup
