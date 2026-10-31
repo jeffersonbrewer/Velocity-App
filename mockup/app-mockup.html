@@ -103,6 +103,11 @@ figcaption span { color: var(--muted); font-size: 13.5px; }
 .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(63,191,127,.18); }
 .check span:last-child { color: var(--ph-muted); font-size: 12.5px; }
 .stepper { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; }
+.load-field { display: flex; align-items: baseline; justify-content: center; gap: 2px; border-radius: 10px; padding: 2px 4px; cursor: text; }
+.load-field:focus-within { box-shadow: 0 0 0 2px var(--ph-accent); }
+.load-field input { width: 4.2ch; background: transparent; border: 0; color: var(--ph-ink); font: 700 40px/1 var(--display); text-align: right; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
+.load-field small { font-size: 16px; color: var(--ph-muted); font-family: var(--display); }
+.hint { font-size: 11.5px; color: var(--ph-muted); text-align: center; }
 .stepper button { height: 44px; border-radius: 12px; background: var(--ph-bg); border: 1px solid var(--ph-line); color: var(--ph-ink); font-size: 22px; cursor: pointer; }
 
 /* Results */
@@ -211,9 +216,10 @@ th:first-child, td:first-child { text-align: left; }
           <div class="label">Load on the bar</div>
           <div class="stepper">
             <button id="minus" aria-label="Remove 2.5 kg">−</button>
-            <div class="big num" id="load">110<small>kg</small></div>
+            <label class="load-field" for="load"><input id="load" type="text" inputmode="decimal" value="110" aria-label="Load in kilograms"><small>kg</small></label>
             <button id="plus" aria-label="Add 2.5 kg">+</button>
           </div>
+          <div class="hint">Tap the number to type a load, or use − and + for 2.5 kg steps</div>
         </div>
         <button class="btn">Start. Recording begins when the bar moves</button>
       </div>
@@ -312,7 +318,15 @@ th:first-child, td:first-child { text-align: left; }
 
   // Setup: load stepper.
   var load = 110;
-  function showLoad() { document.getElementById("load").innerHTML = load.toFixed(load % 1 ? 1 : 0) + "<small>kg</small>"; }
+  var loadInput = document.getElementById("load");
+  function showLoad() { loadInput.value = String(Math.round(load * 100) / 100); }
+  loadInput.addEventListener("focus", function () { loadInput.select(); });
+  loadInput.addEventListener("change", function () {
+    var v = parseFloat(loadInput.value.replace(",", "."));
+    if (!isNaN(v) && v >= 0) load = v;
+    showLoad();
+  });
+  loadInput.addEventListener("keydown", function (e) { if (e.key === "Enter") loadInput.blur(); });
   document.getElementById("plus").addEventListener("click", function () { load += 2.5; showLoad(); });
   document.getElementById("minus").addEventListener("click", function () { load = Math.max(0, load - 2.5); showLoad(); });
 
