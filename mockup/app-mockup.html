@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velocity App Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: four phone screens side by side (wrapping on small screens), each a step of one set: session, setup, results, history. */
+:root {
+  --page: #eef1f4;
+  --ink: #18202a;
+  --muted: #5b6673;
+  --line: #d3d9e0;
+  --accent: #2f6fe4;
+  /* Phone UI is always dark, like a gym app used under bright lights */
+  --ph-bg: #0f141a;
+  --ph-card: #19212b;
+  --ph-line: #2a3542;
+  --ph-ink: #eef2f6;
+  --ph-muted: #8b98a7;
+  --ph-accent: #5b9bff;
+  --good: #3fbf7f;
+  --warn: #f0a63a;
+  --bad: #ef5a5a;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0b0e12; --ink: #e6ebf0; --muted: #96a2ae; --line: #253040; --accent: #6ea1ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0b0e12; --ink: #e6ebf0; --muted: #96a2ae; --line: #253040; --accent: #6ea1ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+header { max-width: 1400px; margin: 0 auto; padding: 28px 16px 8px; display: grid; gap: 6px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 34px; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+.tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 1px 10px; width: fit-content; }
+main { max-width: 1400px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
+figure { margin: 0; display: grid; gap: 10px; width: 320px; max-width: 100%; }
+figcaption { display: grid; gap: 2px; }
+figcaption b { font-family: var(--display); font-size: 20px; font-weight: 600; }
+figcaption span { color: var(--muted); font-size: 13.5px; }
+
+.phone { background: var(--ph-bg); color: var(--ph-ink); border-radius: 38px; border: 8px solid #05070a; height: 690px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(10,20,40,.18); position: relative; }
+.status { display: flex; justify-content: space-between; padding: 10px 22px 4px; font-size: 12px; font-weight: 600; }
+.screen > * { flex: none; }
+.screen { flex: 1; overflow-y: auto; padding: 6px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.title { display: flex; justify-content: space-between; align-items: baseline; }
+.title h2 { font-family: var(--display); font-size: 26px; font-weight: 700; margin: 0; }
+.title small { color: var(--ph-muted); font-size: 12px; }
+.card { background: var(--ph-card); border: 1px solid var(--ph-line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+.label { color: var(--ph-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.big { font-family: var(--display); font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.big small { font-size: 16px; color: var(--ph-muted); font-weight: 500; margin-left: 2px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row.spread { justify-content: space-between; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.num { font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chip { flex: none; background: transparent; color: var(--ph-ink); border: 1px solid var(--ph-line); border-radius: 99px; padding: 6px 12px; font: 500 13px var(--body); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ph-accent); border-color: var(--ph-accent); color: #061226; }
+.chip:focus-visible, .btn:focus-visible, .seg button:focus-visible, .tab:focus-visible { outline: 2px solid var(--ph-accent); outline-offset: 2px; }
+.btn { border: 0; border-radius: 14px; padding: 14px; font: 600 16px var(--body); background: var(--ph-accent); color: #061226; cursor: pointer; width: 100%; }
+.btn.ghost { background: transparent; color: var(--ph-ink); border: 1px solid var(--ph-line); }
+.list { display: grid; }
+.list .item { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 10px 0; border-top: 1px solid var(--ph-line); }
+.list .item:first-child { border-top: 0; }
+.item b { font-weight: 600; font-size: 14px; }
+.item span { color: var(--ph-muted); font-size: 12.5px; }
+.item .pill { grid-row: 1 / span 2; align-self: center; }
+.pill { font-size: 11.5px; font-weight: 600; border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+.pill.good { background: rgba(63,191,127,.16); color: var(--good); }
+.pill.warn { background: rgba(240,166,58,.16); color: var(--warn); }
+.pill.bad { background: rgba(239,90,90,.16); color: var(--bad); }
+.pill.idle { background: rgba(139,152,167,.16); color: var(--ph-muted); }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ph-line); padding: 8px 6px 16px; background: var(--ph-bg); }
+.tab { background: none; border: 0; color: var(--ph-muted); font: 500 11px var(--body); display: grid; justify-items: center; gap: 3px; padding: 2px; }
+.tab svg { width: 20px; height: 20px; }
+.tab.on { color: var(--ph-accent); }
+
+/* Camera */
+.viewfinder { position: relative; border-radius: 14px; overflow: hidden; height: 300px; background: linear-gradient(180deg, #2b333d, #1b2128 70%, #14181d); }
+.viewfinder .rack { position: absolute; top: 0; bottom: 0; width: 18px; background: #3a434e; }
+.viewfinder .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: #262c33; }
+.plate { position: absolute; width: 112px; height: 112px; border-radius: 50%; background: radial-gradient(circle, #c9cfd6 0 11%, #4c5560 12% 22%, #22272e 23% 92%, #343b44 93%); left: 92px; top: 70px; }
+.ring { position: absolute; width: 124px; height: 124px; left: 86px; top: 64px; border: 2px solid var(--good); border-radius: 50%; }
+.ring::after { content: "45 cm plate"; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: var(--good); background: rgba(10,15,20,.7); padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+.path { position: absolute; left: 147px; top: 30px; height: 220px; border-left: 2px dashed rgba(91,155,255,.7); }
+.vf-badge { position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 600; background: rgba(10,15,20,.7); padding: 3px 8px; border-radius: 8px; }
+.vf-badge.rec { left: auto; right: 10px; color: var(--bad); }
+.checks { display: grid; gap: 6px; }
+.check { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(63,191,127,.18); }
+.check span:last-child { color: var(--ph-muted); font-size: 12.5px; }
+.stepper { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; }
+.stepper button { height: 44px; border-radius: 12px; background: var(--ph-bg); border: 1px solid var(--ph-line); color: var(--ph-ink); font-size: 22px; cursor: pointer; }
+
+/* Results */
+.bars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; align-items: end; height: 130px; position: relative; padding-top: 6px; }
+.zone { position: absolute; left: 0; right: 0; background: rgba(63,191,127,.10); border-top: 1px dashed rgba(63,191,127,.6); border-bottom: 1px dashed rgba(63,191,127,.6); }
+.zone span { position: absolute; left: 2px; bottom: 1px; font-size: 10px; color: var(--good); }
+.bar { position: relative; border-radius: 6px 6px 2px 2px; display: flex; justify-content: center; }
+.bar em { position: absolute; top: -18px; font-style: normal; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar-x { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; text-align: center; font-size: 11px; color: var(--ph-muted); }
+.meter { height: 8px; border-radius: 99px; background: var(--ph-bg); position: relative; overflow: visible; }
+.meter i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--warn); }
+.meter b { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--bad); }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th { color: var(--ph-muted); font-weight: 500; text-align: right; padding: 4px 2px; font-size: 11px; }
+td { text-align: right; padding: 5px 2px; border-top: 1px solid var(--ph-line); }
+th:first-child, td:first-child { text-align: left; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--ph-bg); border: 1px solid var(--ph-line); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: transparent; color: var(--ph-muted); font: 500 12.5px var(--body); padding: 6px; border-radius: 8px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ph-card); color: var(--ph-ink); box-shadow: 0 0 0 1px var(--ph-line); }
+
+/* History chart */
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--ph-muted); font-size: 10px; font-family: var(--body); }
+
+.notes { max-width: 1400px; margin: 0 auto; padding: 0 16px 48px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.notes div { border-top: 2px solid var(--line); padding-top: 10px; }
+.notes h3 { font-family: var(--display); font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+.notes p { margin: 0; color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) { .bar { transition: height .3s ease; } }
+</style>
+</head>
+<body>
+<header>
+  <span class="tag">Mockup with example data</span>
+  <h1>Velocity App: first look</h1>
+  <p>Four screens covering one set from start to finish. Tap the exercise chips, the load buttons and the bar or system power switch to see how they respond. Nothing here is measured; the numbers are examples.</p>
+</header>
+
+<main>
+  <!-- 1. Session -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>Today</span></div>
+      <div class="screen">
+        <div class="title"><h2>Today</h2><small>Lower body A</small></div>
+        <div class="chips" role="group" aria-label="Switch exercise">
+          <button class="chip" aria-pressed="true" data-ex="Back squat" data-load="110">Back squat</button>
+          <button class="chip" aria-pressed="false" data-ex="Romanian deadlift" data-load="100">RDL</button>
+          <button class="chip" aria-pressed="false" data-ex="Weighted pull-up" data-load="20">Pull-up</button>
+          <button class="chip" aria-pressed="false" data-ex="KB swing" data-load="32">KB swing</button>
+          <button class="chip" aria-pressed="false" data-ex="New exercise" data-load="0">+ Add</button>
+        </div>
+        <div class="card">
+          <div class="label">Next set</div>
+          <div class="row spread"><b id="next-ex" style="font-size:18px">Back squat</b><span class="pill idle" id="next-mode">Plate tracking</span></div>
+          <div class="row spread">
+            <div class="big num" id="next-load">110<small>kg</small></div>
+            <div style="text-align:right;font-size:12.5px;color:var(--ph-muted)">Target <b style="color:var(--ph-ink)">0.65–0.80 m/s</b><br>Stop at <b style="color:var(--ph-ink)">20% loss</b></div>
+          </div>
+          <button class="btn">Set up camera</button>
+        </div>
+        <div class="tiles">
+          <div class="card"><div class="label">Session volume</div><div class="big num">4,950<small>kg</small></div></div>
+          <div class="card"><div class="label">Best MV today</div><div class="big num">0.82<small>m/s</small></div></div>
+        </div>
+        <div class="card">
+          <div class="label">Done so far</div>
+          <div class="list">
+            <div class="item"><b>Back squat · 100 kg × 5</b><span class="pill good">On target</span><span>MV 0.74 · loss 14%</span></div>
+            <div class="item"><b>Back squat · 100 kg × 5</b><span class="pill good">On target</span><span>MV 0.72 · loss 17%</span></div>
+            <div class="item"><b>Back squat · 110 kg × 5</b><span class="pill warn">Near cutoff</span><span>MV 0.66 · loss 19%</span></div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>1. Today's session</b><span>Switch exercises with one tap. Each one remembers its last load, target zone and fatigue cutoff.</span></figcaption>
+  </figure>
+
+  <!-- 2. Camera setup -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:43</span><span>240 fps</span></div>
+      <div class="screen">
+        <div class="title"><h2>Set up</h2><small>Back squat</small></div>
+        <div class="viewfinder" aria-label="Camera view with the plate detected">
+          <div class="rack" style="left:228px"></div><div class="rack" style="left:270px"></div>
+          <div class="floor"></div>
+          <div class="path"></div>
+          <div class="plate"></div><div class="ring"></div>
+          <span class="vf-badge">Slow motion · 240 fps</span>
+          <span class="vf-badge rec">● Ready</span>
+        </div>
+        <div class="card checks">
+          <div class="check"><span class="dot"></span><span>Plate found</span><span>45 cm</span></div>
+          <div class="check"><span class="dot"></span><span>Camera square to the bar</span><span>99% round</span></div>
+          <div class="check"><span class="dot"></span><span>Whole bar path in frame</span><span>OK</span></div>
+          <div class="check"><span class="dot"></span><span>Phone steady</span><span>On tripod</span></div>
+        </div>
+        <div class="card">
+          <div class="label">Load on the bar</div>
+          <div class="stepper">
+            <button id="minus" aria-label="Remove 2.5 kg">−</button>
+            <div class="big num" id="load">110<small>kg</small></div>
+            <button id="plus" aria-label="Add 2.5 kg">+</button>
+          </div>
+        </div>
+        <button class="btn">Start. Recording begins when the bar moves</button>
+      </div>
+    </div>
+    <figcaption><b>2. Camera setup</b><span>The app finds the plate and checks the angle before you lift, so a bad setup is caught before the set, not after.</span></figcaption>
+  </figure>
+
+  <!-- 3. Set results -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:45</span><span>Set 4</span></div>
+      <div class="screen">
+        <div class="title"><h2>Set 4</h2><small>Back squat · 110 kg × 5</small></div>
+        <div class="tiles">
+          <div class="card"><div class="label">Mean velocity</div><div class="big num">0.72<small>m/s</small></div></div>
+          <div class="card"><div class="label">Peak velocity</div><div class="big num">1.31<small>m/s</small></div></div>
+        </div>
+        <div class="card">
+          <div class="row spread"><div class="label">Mean velocity by rep</div><span class="pill good">In zone</span></div>
+          <div class="bars" id="bars"></div>
+          <div class="bar-x"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+        </div>
+        <div class="card">
+          <div class="row spread"><div class="label">Velocity loss</div><b class="num">15% <span style="color:var(--ph-muted);font-weight:400">of 20% cutoff</span></b></div>
+          <div class="meter"><i style="width:60%"></i><b style="left:80%"></b></div>
+        </div>
+        <div class="card">
+          <div class="row spread">
+            <div class="label">Each rep</div>
+            <div class="seg" role="group" aria-label="Power shown">
+              <button id="pw-bar" aria-pressed="true">Bar</button>
+              <button id="pw-sys" aria-pressed="false">System</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Rep</th><th>MV</th><th>PV</th><th>MP W</th><th>PP W</th><th>Up m</th><th>Down m</th></tr></thead>
+            <tbody id="reps"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>3. Set results</b><span>Shown seconds after you rack the bar. The green band is your target zone. Switch between bar power and system power (bar plus 80% of body mass).</span></figcaption>
+  </figure>
+
+  <!-- 4. History -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:50</span><span>History</span></div>
+      <div class="screen">
+        <div class="title"><h2>Back squat</h2><small>Last 8 sessions</small></div>
+        <div class="card chart">
+          <div class="row spread"><div class="label">Best MV at 100 kg</div><span class="pill good">+0.08 m/s</span></div>
+          <svg id="trend" viewBox="0 0 280 140" role="img" aria-label="Best mean velocity at 100 kg rose from 0.82 to 0.90 m/s over eight sessions"></svg>
+        </div>
+        <div class="card chart">
+          <div class="label">Load–velocity profile</div>
+          <svg id="lv" viewBox="0 0 280 140" role="img" aria-label="Mean velocity falls as load rises, projecting an estimated 1RM of 165 kg"></svg>
+          <div class="row spread" style="font-size:13px"><span style="color:var(--ph-muted)">Estimated 1RM</span><b class="num">165 kg</b></div>
+        </div>
+        <div class="card">
+          <div class="label">Targets for this exercise</div>
+          <div class="row spread" style="font-size:13.5px"><span>Velocity zone</span><b class="num">0.65–0.80 m/s</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Stop set at</span><b class="num">20% loss</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Body mass counted</span><b class="num">80%</b></div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>4. Progress over time</b><span>Trends per exercise, a load–velocity profile with estimated 1RM, and the targets you set.</span></figcaption>
+  </figure>
+</main>
+
+<section class="notes">
+  <div><h3>What's real so far</h3><p>The measurement behind screens 2 and 3 exists as the prototype in the repository. The screens themselves are a design to react to.</p></div>
+  <div><h3>Other equipment</h3><p>When no plate is in view, the setup screen would switch to body tracking for dumbbells, kettlebells and bodyweight work, starting with rep counting.</p></div>
+  <div><h3>Program tab</h3><p>A placeholder for the later programming integration: planned sets, and loads suggested from your velocity.</p></div>
+</section>
+
+<script>
+(function () {
+  // Session: exercise chips update the next-set card.
+  var modes = { "Back squat": "Plate tracking", "Romanian deadlift": "Plate tracking", "Weighted pull-up": "Body tracking", "KB swing": "Body tracking", "New exercise": "Choose type" };
+  document.querySelectorAll(".chip").forEach(function (c) {
+    c.addEventListener("click", function () {
+      document.querySelectorAll(".chip").forEach(function (o) { o.setAttribute("aria-pressed", o === c ? "true" : "false"); });
+      document.getElementById("next-ex").textContent = c.dataset.ex;
+      document.getElementById("next-load").innerHTML = c.dataset.load + "<small>kg</small>";
+      document.getElementById("next-mode").textContent = modes[c.dataset.ex];
+    });
+  });
+
+  // Setup: load stepper.
+  var load = 110;
+  function showLoad() { document.getElementById("load").innerHTML = load.toFixed(load % 1 ? 1 : 0) + "<small>kg</small>"; }
+  document.getElementById("plus").addEventListener("click", function () { load += 2.5; showLoad(); });
+  document.getElementById("minus").addEventListener("click", function () { load = Math.max(0, load - 2.5); showLoad(); });
+
+  // Results: example reps. Power is approximated from velocity for the mockup only.
+  var reps = [
+    { mv: 0.78, pv: 1.40, up: 0.56, down: 0.56 },
+    { mv: 0.76, pv: 1.37, up: 0.56, down: 0.56 },
+    { mv: 0.73, pv: 1.31, up: 0.55, down: 0.56 },
+    { mv: 0.70, pv: 1.26, up: 0.55, down: 0.55 },
+    { mv: 0.66, pv: 1.19, up: 0.55, down: 0.55 }
+  ];
+  var lo = 0.65, hi = 0.80, vmax = 0.9;
+  var bars = document.getElementById("bars");
+  var zone = document.createElement("div");
+  zone.className = "zone";
+  zone.style.bottom = (lo / vmax * 100) + "%";
+  zone.style.height = ((hi - lo) / vmax * 100) + "%";
+  zone.innerHTML = "<span>target</span>";
+  bars.appendChild(zone);
+  reps.forEach(function (r) {
+    var b = document.createElement("div");
+    b.className = "bar";
+    b.style.height = (r.mv / vmax * 100) + "%";
+    b.style.background = r.mv > hi ? "var(--ph-accent)" : (r.mv >= lo ? "var(--good)" : "var(--warn)");
+    b.innerHTML = "<em>" + r.mv.toFixed(2) + "</em>";
+    bars.appendChild(b);
+  });
+
+  var BAR = 110, SYS = 110 + 85 * 0.8;
+  function renderReps(mass) {
+    document.getElementById("reps").innerHTML = reps.map(function (r, i) {
+      var mp = Math.round(mass * 9.81 * r.mv * 1.04), pp = Math.round(mass * 9.81 * r.pv * 1.22);
+      return "<tr><td>" + (i + 1) + "</td><td>" + r.mv.toFixed(2) + "</td><td>" + r.pv.toFixed(2) + "</td><td>" + mp.toLocaleString() + "</td><td>" + pp.toLocaleString() + "</td><td>" + r.up.toFixed(2) + "</td><td>" + r.down.toFixed(2) + "</td></tr>";
+    }).join("");
+  }
+  renderReps(BAR);
+  var pb = document.getElementById("pw-bar"), ps = document.getElementById("pw-sys");
+  pb.addEventListener("click", function () { pb.setAttribute("aria-pressed", "true"); ps.setAttribute("aria-pressed", "false"); renderReps(BAR); });
+  ps.addEventListener("click", function () { ps.setAttribute("aria-pressed", "true"); pb.setAttribute("aria-pressed", "false"); renderReps(SYS); });
+
+  // History charts, drawn as SVG.
+  var NS = "http://www.w3.org/2000/svg";
+  function el(svg, name, attrs, text) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    svg.appendChild(e);
+    return e;
+  }
+  function axes(svg, x0, x1, y0, y1, yTicks, fmt, sx, sy) {
+    yTicks.forEach(function (t) {
+      el(svg, "line", { x1: x0, x2: x1, y1: sy(t), y2: sy(t), stroke: "#2a3542", "stroke-width": 1 });
+      el(svg, "text", { x: x0 - 4, y: sy(t) + 3, "text-anchor": "end" }, fmt(t));
+    });
+  }
+
+  var trend = document.getElementById("trend");
+  var vals = [0.82, 0.84, 0.81, 0.86, 0.85, 0.88, 0.87, 0.90];
+  var X0 = 34, X1 = 272, Y0 = 118, Y1 = 10;
+  var sx = function (i) { return X0 + i * (X1 - X0) / (vals.length - 1); };
+  var sy = function (v) { return Y0 - (v - 0.78) / (0.92 - 0.78) * (Y0 - Y1); };
+  axes(trend, X0, X1, Y0, Y1, [0.80, 0.85, 0.90], function (t) { return t.toFixed(2); }, sx, sy);
+  var pts = vals.map(function (v, i) { return sx(i) + "," + sy(v); }).join(" ");
+  el(trend, "polygon", { points: X0 + "," + Y0 + " " + pts + " " + X1 + "," + Y0, fill: "rgba(91,155,255,.14)" });
+  el(trend, "polyline", { points: pts, fill: "none", stroke: "#5b9bff", "stroke-width": 2 });
+  vals.forEach(function (v, i) { el(trend, "circle", { cx: sx(i), cy: sy(v), r: i === vals.length - 1 ? 4 : 2.2, fill: "#5b9bff" }); });
+  el(trend, "text", { x: sx(7) - 6, y: sy(0.90) - 8, "text-anchor": "end", style: "fill:#eef2f6;font-weight:600" }, "0.90");
+  el(trend, "text", { x: X0, y: 134 }, "Sep 26");
+  el(trend, "text", { x: X1, y: 134, "text-anchor": "end" }, "Oct 31");
+
+  var lv = document.getElementById("lv");
+  var lvPts = [[60, 1.12], [80, 0.98], [100, 0.86], [120, 0.66], [140, 0.48]];
+  var lsx = function (kg) { return X0 + (kg - 50) / (170 - 50) * (X1 - X0); };
+  var lsy = function (v) { return Y0 - (v - 0.2) / (1.2 - 0.2) * (Y0 - Y1); };
+  axes(lv, X0, X1, Y0, Y1, [0.4, 0.8, 1.2], function (t) { return t.toFixed(1); }, lsx, lsy);
+  // Least-squares line through the points, extended to the 1RM velocity of 0.30 m/s.
+  var n = lvPts.length, mx = 0, my = 0, sxy = 0, sxx = 0;
+  lvPts.forEach(function (p) { mx += p[0] / n; my += p[1] / n; });
+  lvPts.forEach(function (p) { sxy += (p[0] - mx) * (p[1] - my); sxx += (p[0] - mx) * (p[0] - mx); });
+  var slope = sxy / sxx, icpt = my - slope * mx, oneRm = (0.30 - icpt) / slope;
+  el(lv, "line", { x1: lsx(55), y1: lsy(icpt + slope * 55), x2: lsx(oneRm), y2: lsy(0.30), stroke: "#5b9bff", "stroke-width": 1.5, "stroke-dasharray": "4 3" });
+  el(lv, "line", { x1: X0, x2: X1, y1: lsy(0.30), y2: lsy(0.30), stroke: "#ef5a5a", "stroke-width": 1, "stroke-dasharray": "2 3" });
+  el(lv, "text", { x: X0 + 2, y: lsy(0.30) - 4, style: "fill:#ef5a5a" }, "1RM velocity 0.30");
+  lvPts.forEach(function (p) { el(lv, "circle", { cx: lsx(p[0]), cy: lsy(p[1]), r: 3, fill: "#5b9bff" }); });
+  el(lv, "circle", { cx: lsx(oneRm), cy: lsy(0.30), r: 4, fill: "none", stroke: "#eef2f6", "stroke-width": 1.5 });
+  [60, 100, 140].forEach(function (kg) { el(lv, "text", { x: lsx(kg), y: 134, "text-anchor": "middle" }, kg + " kg"); });
+})();
+</script>
+</body>
+</html>
