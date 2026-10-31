@@ -69,6 +69,15 @@ sub-pixel movement, slight rotation, motion blur, noise and compression. `tools/
 renders it at several frame rates and reports the error of each metric. Run the tests with
 `.venv/bin/python -m pytest tests`.
 
+Results on a simulated 5-rep squat set at 100 kg (mean absolute error per rep, largest in brackets):
+
+| fps | MV (m/s) | PV (m/s) | Mean power (W) | Peak power (W) | Distance (m) |
+| --- | --- | --- | --- | --- | --- |
+| 30 | 0.037 [0.049] | 0.015 [0.034] | 37 [48] | 26 [84] | < 0.001 |
+| 60 | 0.010 [0.025] | 0.004 [0.007] | 10 [24] | 10 [26] | < 0.001 |
+| 120 | 0.003 [0.010] | 0.002 [0.003] | 3 [10] | 3 [3] | < 0.001 |
+| 240 | 0.002 [0.003] | 0.001 [0.001] | 2 [3] | 1 [3] | < 0.001 |
+
 These simulated clips are cleaner than real footage, which adds lighting changes, occlusion,
 camera shake, lens distortion and perspective. They check that the math is right, not that real-world
 tracking is accurate. Only the GymAware comparison answers that.
