@@ -143,7 +143,7 @@ th:first-child, td:first-child { text-align: left; }
 <header>
   <span class="tag">Mockup with example data</span>
   <h1>Velocity App: first look</h1>
-  <p>Four screens covering one set from start to finish. Tap the exercise chips, the load buttons and the bar or system power switch to see how they respond. Nothing here is measured; the numbers are examples.</p>
+  <p>Four screens covering one set from start to finish, plus settings. Tap the exercise chips, the load field, the bar or system power switch, and the kg or lb switch in Settings to see how they respond. Nothing here is measured; the numbers are examples.</p>
 </header>
 
 <main>
@@ -164,21 +164,21 @@ th:first-child, td:first-child { text-align: left; }
           <div class="label">Next set</div>
           <div class="row spread"><b id="next-ex" style="font-size:18px">Back squat</b><span class="pill idle" id="next-mode">Plate tracking</span></div>
           <div class="row spread">
-            <div class="big num" id="next-load">110<small>kg</small></div>
+            <div class="big num" id="next-load"><span class="w" data-kg="110">110</span><small class="wu">kg</small></div>
             <div style="text-align:right;font-size:12.5px;color:var(--ph-muted)">Target <b style="color:var(--ph-ink)">0.65–0.80 m/s</b><br>Stop at <b style="color:var(--ph-ink)">20% loss</b></div>
           </div>
           <button class="btn">Set up camera</button>
         </div>
         <div class="tiles">
-          <div class="card"><div class="label">Session volume</div><div class="big num">4,950<small>kg</small></div></div>
+          <div class="card"><div class="label">Session volume</div><div class="big num"><span class="w" data-kg="4950">4950</span><small class="wu">kg</small></div></div>
           <div class="card"><div class="label">Best MV today</div><div class="big num">0.82<small>m/s</small></div></div>
         </div>
         <div class="card">
           <div class="label">Done so far</div>
           <div class="list">
-            <div class="item"><b>Back squat · 100 kg × 5</b><span class="pill good">On target</span><span>MV 0.74 · loss 14%</span></div>
-            <div class="item"><b>Back squat · 100 kg × 5</b><span class="pill good">On target</span><span>MV 0.72 · loss 17%</span></div>
-            <div class="item"><b>Back squat · 110 kg × 5</b><span class="pill warn">Near cutoff</span><span>MV 0.66 · loss 19%</span></div>
+            <div class="item"><b>Back squat · <span class="w" data-kg="100">100</span> <span class="wu">kg</span> × 5</b><span class="pill good">On target</span><span>MV 0.74 · loss 14%</span></div>
+            <div class="item"><b>Back squat · <span class="w" data-kg="100">100</span> <span class="wu">kg</span> × 5</b><span class="pill good">On target</span><span>MV 0.72 · loss 17%</span></div>
+            <div class="item"><b>Back squat · <span class="w" data-kg="110">110</span> <span class="wu">kg</span> × 5</b><span class="pill warn">Near cutoff</span><span>MV 0.66 · loss 19%</span></div>
           </div>
         </div>
       </div>
@@ -215,11 +215,11 @@ th:first-child, td:first-child { text-align: left; }
         <div class="card">
           <div class="label">Load on the bar</div>
           <div class="stepper">
-            <button id="minus" aria-label="Remove 2.5 kg">−</button>
-            <label class="load-field" for="load"><input id="load" type="text" inputmode="decimal" value="110" aria-label="Load in kilograms"><small>kg</small></label>
-            <button id="plus" aria-label="Add 2.5 kg">+</button>
+            <button id="minus" aria-label="Remove one step">−</button>
+            <label class="load-field" for="load"><input id="load" type="text" inputmode="decimal" value="110" aria-label="Load"><small class="wu">kg</small></label>
+            <button id="plus" aria-label="Add one step">+</button>
           </div>
-          <div class="hint">Tap the number to type a load, or use − and + for 2.5 kg steps</div>
+          <div class="hint">Tap the number to type a load, or use − and + for <span id="step-label">2.5 kg</span> steps</div>
         </div>
         <button class="btn">Start. Recording begins when the bar moves</button>
       </div>
@@ -232,7 +232,7 @@ th:first-child, td:first-child { text-align: left; }
     <div class="phone">
       <div class="status"><span>9:45</span><span>Set 4</span></div>
       <div class="screen">
-        <div class="title"><h2>Set 4</h2><small>Back squat · 110 kg × 5</small></div>
+        <div class="title"><h2>Set 4</h2><small>Back squat · <span class="w" data-kg="110">110</span> <span class="wu">kg</span> × 5</small></div>
         <div class="tiles">
           <div class="card"><div class="label">Mean velocity</div><div class="big num">0.72<small>m/s</small></div></div>
           <div class="card"><div class="label">Peak velocity</div><div class="big num">1.31<small>m/s</small></div></div>
@@ -271,13 +271,13 @@ th:first-child, td:first-child { text-align: left; }
       <div class="screen">
         <div class="title"><h2>Back squat</h2><small>Last 8 sessions</small></div>
         <div class="card chart">
-          <div class="row spread"><div class="label">Best MV at 100 kg</div><span class="pill good">+0.08 m/s</span></div>
+          <div class="row spread"><div class="label">Best MV at <span class="w" data-kg="100">100</span> <span class="wu">kg</span></div><span class="pill good">+0.08 m/s</span></div>
           <svg id="trend" viewBox="0 0 280 140" role="img" aria-label="Best mean velocity at 100 kg rose from 0.82 to 0.90 m/s over eight sessions"></svg>
         </div>
         <div class="card chart">
           <div class="label">Load–velocity profile</div>
           <svg id="lv" viewBox="0 0 280 140" role="img" aria-label="Mean velocity falls as load rises, projecting an estimated 1RM of 165 kg"></svg>
-          <div class="row spread" style="font-size:13px"><span style="color:var(--ph-muted)">Estimated 1RM</span><b class="num">165 kg</b></div>
+          <div class="row spread" style="font-size:13px"><span style="color:var(--ph-muted)">Estimated 1RM</span><b class="num"><span class="w" data-kg="165">165</span> <span class="wu">kg</span></b></div>
         </div>
         <div class="card">
           <div class="label">Targets for this exercise</div>
@@ -295,6 +295,52 @@ th:first-child, td:first-child { text-align: left; }
     </div>
     <figcaption><b>4. Progress over time</b><span>Trends per exercise, a load–velocity profile with estimated 1RM, and the targets you set.</span></figcaption>
   </figure>
+
+  <!-- 5. Settings -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:52</span><span>Settings</span></div>
+      <div class="screen">
+        <div class="title"><h2>Settings</h2><small>Applies everywhere</small></div>
+        <div class="card">
+          <div class="row spread">
+            <div><b style="font-size:14px">Weight units</b><div style="color:var(--ph-muted);font-size:12px">Loads, volume and body mass</div></div>
+            <div class="seg" role="group" aria-label="Weight units" style="width:110px">
+              <button id="u-kg" aria-pressed="true">kg</button>
+              <button id="u-lb" aria-pressed="false">lb</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="label">About you</div>
+          <div class="row spread" style="font-size:13.5px"><span>Body mass</span><b class="num"><span class="w" data-kg="85">85</span> <span class="wu">kg</span></b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Height</span><b class="num">180 cm</b></div>
+        </div>
+        <div class="card">
+          <div class="label">Defaults for new exercises</div>
+          <div class="row spread" style="font-size:13.5px"><span>Stop set at</span><b class="num">20% loss</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Load step</span><b class="num" id="step-setting">2.5 kg</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Bar weight</span><b class="num"><span class="w" data-kg="20">20</span> <span class="wu">kg</span></b></div>
+        </div>
+        <div class="card">
+          <div class="label">Camera</div>
+          <div class="row spread" style="font-size:13.5px"><span>Frame rate</span><b class="num">240 fps</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Plate facing camera</span><b class="num">45 cm (standard)</b></div>
+        </div>
+        <div class="card">
+          <div class="label">Feedback</div>
+          <div class="row spread" style="font-size:13.5px"><span>Sound at fatigue cutoff</span><b class="num" style="color:var(--good)">On</b></div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>5. Settings</b><span>Switch between kilograms and pounds once, and every screen follows. Body mass, defaults and camera options live here too.</span></figcaption>
+  </figure>
 </main>
 
 <section class="notes">
@@ -311,24 +357,56 @@ th:first-child, td:first-child { text-align: left; }
     c.addEventListener("click", function () {
       document.querySelectorAll(".chip").forEach(function (o) { o.setAttribute("aria-pressed", o === c ? "true" : "false"); });
       document.getElementById("next-ex").textContent = c.dataset.ex;
-      document.getElementById("next-load").innerHTML = c.dataset.load + "<small>kg</small>";
+      var w = document.querySelector("#next-load .w");
+      w.dataset.kg = c.dataset.load;
+      renderWeights();
       document.getElementById("next-mode").textContent = modes[c.dataset.ex];
     });
   });
 
-  // Setup: load stepper.
-  var load = 110;
+  // Units: every weight is stored in kg and shown in the chosen unit.
+  var LB_PER_KG = 2.20462;
+  var unit = "kg";
+  function toUnit(kg) { return unit === "kg" ? kg : kg * LB_PER_KG; }
+  function fmtW(kg) {
+    var v = toUnit(kg);
+    v = unit === "kg" ? Math.round(v * 10) / 10 : Math.round(v * 2) / 2;
+    return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  }
+  function renderWeights() {
+    document.querySelectorAll(".w").forEach(function (e) { e.textContent = fmtW(parseFloat(e.dataset.kg)); });
+    document.querySelectorAll(".wu").forEach(function (e) { e.textContent = unit; });
+    var step = unit === "kg" ? "2.5 kg" : "5 lb";
+    document.getElementById("step-label").textContent = step;
+    document.getElementById("step-setting").textContent = step;
+    showLoad();
+    if (window.drawLv) window.drawLv();
+  }
+
+  // Setup: load stepper and typed load, in the chosen unit.
+  var loadKg = 110;
   var loadInput = document.getElementById("load");
-  function showLoad() { loadInput.value = String(Math.round(load * 100) / 100); }
+  function stepKg() { return unit === "kg" ? 2.5 : 5 / LB_PER_KG; }
+  function showLoad() { loadInput.value = fmtW(loadKg).replace(/,/g, ""); }
   loadInput.addEventListener("focus", function () { loadInput.select(); });
   loadInput.addEventListener("change", function () {
     var v = parseFloat(loadInput.value.replace(",", "."));
-    if (!isNaN(v) && v >= 0) load = v;
+    if (!isNaN(v) && v >= 0) loadKg = unit === "kg" ? v : v / LB_PER_KG;
     showLoad();
   });
   loadInput.addEventListener("keydown", function (e) { if (e.key === "Enter") loadInput.blur(); });
-  document.getElementById("plus").addEventListener("click", function () { load += 2.5; showLoad(); });
-  document.getElementById("minus").addEventListener("click", function () { load = Math.max(0, load - 2.5); showLoad(); });
+  document.getElementById("plus").addEventListener("click", function () { loadKg += stepKg(); showLoad(); });
+  document.getElementById("minus").addEventListener("click", function () { loadKg = Math.max(0, loadKg - stepKg()); showLoad(); });
+
+  var ukg = document.getElementById("u-kg"), ulb = document.getElementById("u-lb");
+  function setUnit(u) {
+    unit = u;
+    ukg.setAttribute("aria-pressed", u === "kg" ? "true" : "false");
+    ulb.setAttribute("aria-pressed", u === "lb" ? "true" : "false");
+    renderWeights();
+  }
+  ukg.addEventListener("click", function () { setUnit("kg"); });
+  ulb.addEventListener("click", function () { setUnit("lb"); });
 
   // Results: example reps. Power is approximated from velocity for the mockup only.
   var reps = [
@@ -412,7 +490,9 @@ th:first-child, td:first-child { text-align: left; }
   el(lv, "text", { x: X0 + 2, y: lsy(0.30) - 4, style: "fill:#ef5a5a" }, "1RM velocity 0.30");
   lvPts.forEach(function (p) { el(lv, "circle", { cx: lsx(p[0]), cy: lsy(p[1]), r: 3, fill: "#5b9bff" }); });
   el(lv, "circle", { cx: lsx(oneRm), cy: lsy(0.30), r: 4, fill: "none", stroke: "#eef2f6", "stroke-width": 1.5 });
-  [60, 100, 140].forEach(function (kg) { el(lv, "text", { x: lsx(kg), y: 134, "text-anchor": "middle" }, kg + " kg"); });
+  var lvLabels = [60, 100, 140].map(function (kg) { return el(lv, "text", { x: lsx(kg), y: 134, "text-anchor": "middle" }, ""); });
+  window.drawLv = function () { lvLabels.forEach(function (t, i) { t.textContent = fmtW([60, 100, 140][i]) + " " + unit; }); };
+  window.drawLv();
 })();
 </script>
 </body>
