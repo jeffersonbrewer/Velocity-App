@@ -238,13 +238,20 @@ th:first-child, td:first-child { text-align: left; }
           <div class="card"><div class="label">Peak velocity</div><div class="big num">1.31<small>m/s</small></div></div>
         </div>
         <div class="card">
-          <div class="row spread"><div class="label">Mean velocity by rep</div><span class="pill good">In zone</span></div>
+          <div class="row spread">
+            <div class="label" id="vel-label">Mean by rep</div>
+            <div class="seg" role="group" aria-label="Velocity shown" style="width:118px">
+              <button id="v-mean" aria-pressed="true">Mean</button>
+              <button id="v-peak" aria-pressed="false">Peak</button>
+            </div>
+          </div>
           <div class="bars" id="bars"></div>
           <div class="bar-x"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+          <div class="row spread" style="font-size:12px"><span style="color:var(--ph-muted)" id="zone-note">Target 0.65–0.80 m/s</span><span class="pill good" id="zone-pill">All reps in zone</span></div>
         </div>
         <div class="card">
-          <div class="row spread"><div class="label">Velocity loss</div><b class="num">15% <span style="color:var(--ph-muted);font-weight:400">of 20% cutoff</span></b></div>
-          <div class="meter"><i style="width:60%"></i><b style="left:80%"></b></div>
+          <div class="row spread"><div class="label" id="loss-label">Loss (mean)</div><b class="num"><span id="loss-val">15%</span> <span style="color:var(--ph-muted);font-weight:400">of 20% cutoff</span></b></div>
+          <div class="meter"><i id="loss-bar" style="width:60%"></i><b style="left:80%"></b></div>
         </div>
         <div class="card">
           <div class="row spread">
@@ -423,22 +430,50 @@ th:first-child, td:first-child { text-align: left; }
     { mv: 0.70, pv: 1.26, up: 0.55, down: 0.55 },
     { mv: 0.66, pv: 1.19, up: 0.55, down: 0.55 }
   ];
-  var lo = 0.65, hi = 0.80, vmax = 0.9;
+  // Rep chart: mean or peak velocity. Only mean velocity has a target zone in this example.
+  var lo = 0.65, hi = 0.80;
   var bars = document.getElementById("bars");
-  var zone = document.createElement("div");
-  zone.className = "zone";
-  zone.style.bottom = (lo / vmax * 100) + "%";
-  zone.style.height = ((hi - lo) / vmax * 100) + "%";
-  zone.innerHTML = "<span>target</span>";
-  bars.appendChild(zone);
-  reps.forEach(function (r) {
-    var b = document.createElement("div");
-    b.className = "bar";
-    b.style.height = (r.mv / vmax * 100) + "%";
-    b.style.background = r.mv > hi ? "var(--ph-accent)" : (r.mv >= lo ? "var(--good)" : "var(--warn)");
-    b.innerHTML = "<em>" + r.mv.toFixed(2) + "</em>";
-    bars.appendChild(b);
-  });
+  function renderBars(kind) {
+    var key = kind === "peak" ? "pv" : "mv";
+    var vmax = kind === "peak" ? 1.6 : 0.9;
+    bars.innerHTML = "";
+    if (kind === "mean") {
+      var zone = document.createElement("div");
+      zone.className = "zone";
+      zone.style.bottom = (lo / vmax * 100) + "%";
+      zone.style.height = ((hi - lo) / vmax * 100) + "%";
+      zone.innerHTML = "<span>target</span>";
+      bars.appendChild(zone);
+    }
+    reps.forEach(function (r) {
+      var v = r[key];
+      var b = document.createElement("div");
+      b.className = "bar";
+      b.style.height = (v / vmax * 100) + "%";
+      b.style.background = kind === "peak" ? "var(--ph-accent)" : (v > hi ? "var(--ph-accent)" : (v >= lo ? "var(--good)" : "var(--warn)"));
+      b.innerHTML = "<em>" + v.toFixed(2) + "</em>";
+      bars.appendChild(b);
+    });
+    document.getElementById("vel-label").textContent = (kind === "peak" ? "Peak" : "Mean") + " by rep";
+    var pill = document.getElementById("zone-pill");
+    if (kind === "peak") {
+      document.getElementById("zone-note").textContent = "No peak target set for this exercise";
+      pill.style.display = "none";
+    } else {
+      document.getElementById("zone-note").textContent = "Target 0.65–0.80 m/s";
+      pill.style.display = "";
+    }
+    // Velocity loss follows the chosen measure: best rep to last rep.
+    var vals = reps.map(function (r) { return r[key]; });
+    var best = Math.max.apply(null, vals), loss = (best - vals[vals.length - 1]) / best * 100;
+    document.getElementById("loss-label").textContent = "Loss (" + kind + ")";
+    document.getElementById("loss-val").textContent = Math.round(loss) + "%";
+    document.getElementById("loss-bar").style.width = Math.min(loss, 25) / 25 * 100 + "%";
+  }
+  var vm = document.getElementById("v-mean"), vp = document.getElementById("v-peak");
+  vm.addEventListener("click", function () { vm.setAttribute("aria-pressed", "true"); vp.setAttribute("aria-pressed", "false"); renderBars("mean"); });
+  vp.addEventListener("click", function () { vp.setAttribute("aria-pressed", "true"); vm.setAttribute("aria-pressed", "false"); renderBars("peak"); });
+  renderBars("mean");
 
   var BAR = 110, SYS = 110 + 85 * 0.8;
   function renderReps(mass) {
