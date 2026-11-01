@@ -128,6 +128,27 @@ th:first-child, td:first-child { text-align: left; }
 .seg button { border: 0; background: transparent; color: var(--ph-muted); font: 500 12.5px var(--body); padding: 6px; border-radius: 8px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--ph-card); color: var(--ph-ink); box-shadow: 0 0 0 1px var(--ph-line); }
 
+/* Rep editing */
+#reps tr { cursor: pointer; }
+#reps tr:hover td, #reps tr:focus-visible td { background: rgba(91,155,255,.08); }
+#reps tr:focus-visible { outline: 2px solid var(--ph-accent); outline-offset: -2px; }
+#reps tr.deleted td { color: var(--ph-muted); text-decoration: line-through; }
+#reps tr.adjusted td:first-child::after { content: "•"; color: var(--ph-accent); margin-left: 3px; }
+.bar.off { background: var(--ph-line) !important; }
+.bar.off em { color: var(--ph-muted); text-decoration: line-through; }
+.sheet-wrap { position: absolute; inset: 0; background: rgba(5,8,12,.55); display: none; align-items: flex-end; z-index: 5; }
+.sheet-wrap.open { display: flex; }
+.sheet { background: var(--ph-card); border-top: 1px solid var(--ph-line); border-radius: 20px 20px 0 0; padding: 14px 14px 22px; width: 100%; display: grid; gap: 10px; }
+.sheet h3 { font-family: var(--display); font-size: 22px; margin: 0; }
+.sheet svg { width: 100%; height: auto; display: block; background: var(--ph-bg); border-radius: 10px; }
+.sheet .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+.sheet .stats b { display: block; font-family: var(--display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.sheet .stats span { color: var(--ph-muted); font-size: 11px; }
+.sheet label { font-size: 12px; color: var(--ph-muted); display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 8px; }
+.sheet input[type=range] { width: 100%; accent-color: var(--ph-accent); }
+.sheet .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn.danger { background: transparent; color: var(--bad); border: 1px solid rgba(239,90,90,.5); }
+.btn.small { padding: 10px; font-size: 14px; }
 /* History chart */
 .chart svg { width: 100%; height: auto; display: block; }
 .chart text { fill: var(--ph-muted); font-size: 10px; font-family: var(--body); }
@@ -232,10 +253,10 @@ th:first-child, td:first-child { text-align: left; }
     <div class="phone">
       <div class="status"><span>9:45</span><span>Set 4</span></div>
       <div class="screen">
-        <div class="title"><h2>Set 4</h2><small>Back squat · <span class="w" data-kg="110">110</span> <span class="wu">kg</span> × 5</small></div>
+        <div class="title"><h2>Set 4</h2><small>Back squat · <span class="w" data-kg="110">110</span> <span class="wu">kg</span> × <span id="rep-count">5</span></small></div>
         <div class="tiles">
-          <div class="card"><div class="label">Mean velocity</div><div class="big num">0.72<small>m/s</small></div></div>
-          <div class="card"><div class="label">Peak velocity</div><div class="big num">1.31<small>m/s</small></div></div>
+          <div class="card"><div class="label">Mean velocity</div><div class="big num"><span id="set-mv">0.72</span><small>m/s</small></div></div>
+          <div class="card"><div class="label">Best peak</div><div class="big num"><span id="set-pv">1.40</span><small>m/s</small></div></div>
         </div>
         <div class="card">
           <div class="row spread">
@@ -250,7 +271,7 @@ th:first-child, td:first-child { text-align: left; }
           <div class="row spread" style="font-size:12px"><span style="color:var(--ph-muted)" id="zone-note">Target 0.65–0.80 m/s</span><span class="pill good" id="zone-pill">All reps in zone</span></div>
         </div>
         <div class="card">
-          <div class="row spread"><div class="label" id="loss-label">Loss (mean)</div><b class="num"><span id="loss-val">15%</span> <span style="color:var(--ph-muted);font-weight:400">of 20% cutoff</span></b></div>
+          <div class="row spread"><div class="label" id="loss-label">Velocity loss</div><b class="num"><span id="loss-val">15%</span> <span style="color:var(--ph-muted);font-weight:400">of 20% cutoff</span></b></div>
           <div class="meter"><i id="loss-bar" style="width:60%"></i><b style="left:80%"></b></div>
         </div>
         <div class="card">
@@ -265,6 +286,24 @@ th:first-child, td:first-child { text-align: left; }
             <thead><tr><th>Rep</th><th>MV</th><th>PV</th><th>MP W</th><th>PP W</th><th>Up m</th><th>Down m</th></tr></thead>
             <tbody id="reps"></tbody>
           </table>
+          <div class="hint">Tap a rep to adjust where it starts and ends, or delete it</div>
+        </div>
+      </div>
+      <div class="sheet-wrap" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+        <div class="sheet">
+          <div class="row spread"><h3 id="sheet-title">Rep 3</h3><button class="chip" id="sheet-close">Cancel</button></div>
+          <svg id="sheet-trace" viewBox="0 0 280 90" aria-label="Bar velocity during the rep, with the counted part shaded"></svg>
+          <label for="trim-start">Start<input type="range" id="trim-start" min="0" max="40" value="0"></label>
+          <label for="trim-end">End<input type="range" id="trim-end" min="60" max="100" value="100"></label>
+          <div class="stats">
+            <div><b id="sh-mv">0.73</b><span>Mean m/s</span></div>
+            <div><b id="sh-pv">1.31</b><span>Peak m/s</span></div>
+            <div><b id="sh-up">0.55</b><span>Up m</span></div>
+          </div>
+          <div class="actions">
+            <button class="btn danger small" id="sheet-delete">Delete rep</button>
+            <button class="btn small" id="sheet-save">Save</button>
+          </div>
         </div>
       </div>
     </div>
@@ -429,15 +468,27 @@ th:first-child, td:first-child { text-align: left; }
     { mv: 0.73, pv: 1.31, up: 0.55, down: 0.56 },
     { mv: 0.70, pv: 1.26, up: 0.55, down: 0.55 },
     { mv: 0.66, pv: 1.19, up: 0.55, down: 0.55 }
-  ];
-  // Rep chart: mean or peak velocity. Only mean velocity has a target zone in this example.
-  var lo = 0.65, hi = 0.80;
+  ].map(function (r) { r.base = { mv: r.mv, pv: r.pv, up: r.up }; r.a = 0; r.b = 1; r.deleted = false; return r; });
+
+  // Each example rep follows a smooth (minimum-jerk) velocity curve; trimming its
+  // start or end changes the counted displacement and time, and so its metrics.
+  function sPos(t) { return 10 * t * t * t - 15 * Math.pow(t, 4) + 6 * Math.pow(t, 5); }
+  function vShape(t) { return 30 * t * t - 60 * t * t * t + 30 * Math.pow(t, 4); }
+  function trimmed(r, a, b) {
+    var frac = sPos(b) - sPos(a);
+    var peakT = Math.min(Math.max(0.5, a), b);
+    return { mv: r.base.mv * frac / (b - a), pv: r.base.pv * vShape(peakT) / 1.875, up: r.base.up * frac };
+  }
+
+  var lo = 0.65, hi = 0.80, view = "mean", mass = 110;
   var bars = document.getElementById("bars");
-  function renderBars(kind) {
-    var key = kind === "peak" ? "pv" : "mv";
-    var vmax = kind === "peak" ? 1.6 : 0.9;
+  function live() { return reps.filter(function (r) { return !r.deleted; }); }
+
+  function renderBars() {
+    var key = view === "peak" ? "pv" : "mv";
+    var vmax = view === "peak" ? 1.6 : 0.9;
     bars.innerHTML = "";
-    if (kind === "mean") {
+    if (view === "mean") {
       var zone = document.createElement("div");
       zone.className = "zone";
       zone.style.bottom = (lo / vmax * 100) + "%";
@@ -448,44 +499,108 @@ th:first-child, td:first-child { text-align: left; }
     reps.forEach(function (r) {
       var v = r[key];
       var b = document.createElement("div");
-      b.className = "bar";
+      b.className = "bar" + (r.deleted ? " off" : "");
       b.style.height = (v / vmax * 100) + "%";
-      b.style.background = kind === "peak" ? "var(--ph-accent)" : (v > hi ? "var(--ph-accent)" : (v >= lo ? "var(--good)" : "var(--warn)"));
+      b.style.background = view === "peak" ? "var(--ph-accent)" : (v > hi ? "var(--ph-accent)" : (v >= lo ? "var(--good)" : "var(--warn)"));
       b.innerHTML = "<em>" + v.toFixed(2) + "</em>";
       bars.appendChild(b);
     });
-    document.getElementById("vel-label").textContent = (kind === "peak" ? "Peak" : "Mean") + " by rep";
+    document.getElementById("vel-label").textContent = (view === "peak" ? "Peak" : "Mean") + " by rep";
     var pill = document.getElementById("zone-pill");
-    if (kind === "peak") {
-      document.getElementById("zone-note").textContent = "No peak target set for this exercise";
+    var inZone = live().filter(function (r) { return r.mv >= lo && r.mv <= hi; }).length;
+    if (view === "peak") {
+      document.getElementById("zone-note").textContent = "For review; targets use mean velocity";
       pill.style.display = "none";
     } else {
       document.getElementById("zone-note").textContent = "Target 0.65–0.80 m/s";
       pill.style.display = "";
+      pill.textContent = inZone === live().length ? "All reps in zone" : inZone + " of " + live().length + " in zone";
+      pill.className = "pill " + (inZone === live().length ? "good" : "warn");
     }
-    // Velocity loss follows the chosen measure: best rep to last rep.
-    var vals = reps.map(function (r) { return r[key]; });
-    var best = Math.max.apply(null, vals), loss = (best - vals[vals.length - 1]) / best * 100;
-    document.getElementById("loss-label").textContent = "Loss (" + kind + ")";
+  }
+
+  function renderSummary() {
+    var l = live();
+    var mvs = l.map(function (r) { return r.mv; }), pvs = l.map(function (r) { return r.pv; });
+    document.getElementById("rep-count").textContent = l.length;
+    document.getElementById("set-mv").textContent = l.length ? (mvs.reduce(function (x, y) { return x + y; }, 0) / l.length).toFixed(2) : "–";
+    document.getElementById("set-pv").textContent = l.length ? Math.max.apply(null, pvs).toFixed(2) : "–";
+    // Velocity loss always uses mean velocity: best rep to last counted rep.
+    var loss = 0;
+    if (l.length) { var best = Math.max.apply(null, mvs); loss = (best - mvs[mvs.length - 1]) / best * 100; }
     document.getElementById("loss-val").textContent = Math.round(loss) + "%";
     document.getElementById("loss-bar").style.width = Math.min(loss, 25) / 25 * 100 + "%";
   }
-  var vm = document.getElementById("v-mean"), vp = document.getElementById("v-peak");
-  vm.addEventListener("click", function () { vm.setAttribute("aria-pressed", "true"); vp.setAttribute("aria-pressed", "false"); renderBars("mean"); });
-  vp.addEventListener("click", function () { vp.setAttribute("aria-pressed", "true"); vm.setAttribute("aria-pressed", "false"); renderBars("peak"); });
-  renderBars("mean");
 
-  var BAR = 110, SYS = 110 + 85 * 0.8;
-  function renderReps(mass) {
+  function renderReps() {
     document.getElementById("reps").innerHTML = reps.map(function (r, i) {
       var mp = Math.round(mass * 9.81 * r.mv * 1.04), pp = Math.round(mass * 9.81 * r.pv * 1.22);
-      return "<tr><td>" + (i + 1) + "</td><td>" + r.mv.toFixed(2) + "</td><td>" + r.pv.toFixed(2) + "</td><td>" + mp.toLocaleString() + "</td><td>" + pp.toLocaleString() + "</td><td>" + r.up.toFixed(2) + "</td><td>" + r.down.toFixed(2) + "</td></tr>";
+      var cls = (r.deleted ? "deleted" : "") + (r.a > 0 || r.b < 1 ? " adjusted" : "");
+      return "<tr tabindex=\"0\" data-i=\"" + i + "\" class=\"" + cls + "\" aria-label=\"Rep " + (i + 1) + ", tap to adjust or delete\"><td>" + (i + 1) + "</td><td>" + r.mv.toFixed(2) + "</td><td>" + r.pv.toFixed(2) + "</td><td>" + mp.toLocaleString() + "</td><td>" + pp.toLocaleString() + "</td><td>" + r.up.toFixed(2) + "</td><td>" + r.down.toFixed(2) + "</td></tr>";
     }).join("");
   }
-  renderReps(BAR);
+  function renderAll() { renderBars(); renderSummary(); renderReps(); }
+
+  var vm = document.getElementById("v-mean"), vp = document.getElementById("v-peak");
+  vm.addEventListener("click", function () { vm.setAttribute("aria-pressed", "true"); vp.setAttribute("aria-pressed", "false"); view = "mean"; renderBars(); });
+  vp.addEventListener("click", function () { vp.setAttribute("aria-pressed", "true"); vm.setAttribute("aria-pressed", "false"); view = "peak"; renderBars(); });
+
+  var BAR = 110, SYS = 110 + 85 * 0.8;
   var pb = document.getElementById("pw-bar"), ps = document.getElementById("pw-sys");
-  pb.addEventListener("click", function () { pb.setAttribute("aria-pressed", "true"); ps.setAttribute("aria-pressed", "false"); renderReps(BAR); });
-  ps.addEventListener("click", function () { ps.setAttribute("aria-pressed", "true"); pb.setAttribute("aria-pressed", "false"); renderReps(SYS); });
+  pb.addEventListener("click", function () { pb.setAttribute("aria-pressed", "true"); ps.setAttribute("aria-pressed", "false"); mass = BAR; renderReps(); });
+  ps.addEventListener("click", function () { ps.setAttribute("aria-pressed", "true"); pb.setAttribute("aria-pressed", "false"); mass = SYS; renderReps(); });
+
+  // Rep sheet: adjust start and end, or delete.
+  var sheet = document.getElementById("sheet"), trace = document.getElementById("sheet-trace");
+  var ts = document.getElementById("trim-start"), te = document.getElementById("trim-end");
+  var current = null, lastFocus = null;
+  function drawSheet() {
+    var r = reps[current], a = ts.value / 100, b = te.value / 100, m = trimmed(r, a, b);
+    document.getElementById("sh-mv").textContent = m.mv.toFixed(2);
+    document.getElementById("sh-pv").textContent = m.pv.toFixed(2);
+    document.getElementById("sh-up").textContent = m.up.toFixed(2);
+    var W = 280, H = 90, pad = 8, pts = [], area = [];
+    for (var k = 0; k <= 60; k++) {
+      var t = k / 60, x = pad + t * (W - 2 * pad), y = H - pad - vShape(t) / 1.875 * (H - 2 * pad);
+      pts.push(x + "," + y);
+      if (t >= a && t <= b) area.push(x + "," + y);
+    }
+    var xa = pad + a * (W - 2 * pad), xb = pad + b * (W - 2 * pad), base = H - pad;
+    trace.innerHTML = '<polygon points="' + xa + ',' + base + ' ' + area.join(" ") + ' ' + xb + ',' + base + '" fill="rgba(91,155,255,.25)"/>' +
+      '<polyline points="' + pts.join(" ") + '" fill="none" stroke="#5b9bff" stroke-width="2"/>' +
+      '<line x1="' + xa + '" x2="' + xa + '" y1="4" y2="' + base + '" stroke="#eef2f6" stroke-width="1.5"/>' +
+      '<line x1="' + xb + '" x2="' + xb + '" y1="4" y2="' + base + '" stroke="#eef2f6" stroke-width="1.5"/>';
+  }
+  function openSheet(i) {
+    current = i; lastFocus = document.activeElement;
+    var r = reps[i];
+    document.getElementById("sheet-title").textContent = "Rep " + (i + 1) + (r.deleted ? " (deleted)" : "");
+    ts.value = Math.round(r.a * 100); te.value = Math.round(r.b * 100);
+    document.getElementById("sheet-delete").textContent = r.deleted ? "Restore rep" : "Delete rep";
+    drawSheet();
+    sheet.classList.add("open");
+    ts.focus();
+  }
+  function closeSheet() { sheet.classList.remove("open"); if (lastFocus) lastFocus.focus(); }
+  ts.addEventListener("input", drawSheet);
+  te.addEventListener("input", drawSheet);
+  document.getElementById("sheet-close").addEventListener("click", closeSheet);
+  sheet.addEventListener("click", function (e) { if (e.target === sheet) closeSheet(); });
+  sheet.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
+  document.getElementById("sheet-save").addEventListener("click", function () {
+    var r = reps[current], a = ts.value / 100, b = te.value / 100, m = trimmed(r, a, b);
+    r.a = a; r.b = b; r.mv = m.mv; r.pv = m.pv; r.up = m.up;
+    renderAll(); closeSheet();
+  });
+  document.getElementById("sheet-delete").addEventListener("click", function () {
+    reps[current].deleted = !reps[current].deleted;
+    renderAll(); closeSheet();
+  });
+  var tbody = document.getElementById("reps");
+  tbody.addEventListener("click", function (e) { var tr = e.target.closest("tr"); if (tr) openSheet(+tr.dataset.i); });
+  tbody.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { var tr = e.target.closest("tr"); if (tr) { e.preventDefault(); openSheet(+tr.dataset.i); } } });
+
+  renderAll();
 
   // History charts, drawn as SVG.
   var NS = "http://www.w3.org/2000/svg";
