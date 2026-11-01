@@ -103,9 +103,9 @@ figcaption span { color: var(--muted); font-size: 13.5px; }
 .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(63,191,127,.18); }
 .check span:last-child { color: var(--ph-muted); font-size: 12.5px; }
 .stepper { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; }
-.load-field { display: flex; align-items: baseline; justify-content: center; gap: 2px; border-radius: 10px; padding: 2px 4px; cursor: text; }
+.load-field { min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 2px; border-radius: 10px; padding: 2px 4px; cursor: text; }
 .load-field:focus-within { box-shadow: 0 0 0 2px var(--ph-accent); }
-.load-field input { width: 4.2ch; background: transparent; border: 0; color: var(--ph-ink); font: 700 40px/1 var(--display); text-align: right; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
+.load-field input { width: 3ch; min-width: 2ch; max-width: 100%; field-sizing: content; background: transparent; border: 0; color: var(--ph-ink); font: 700 40px/1 var(--display); text-align: right; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
 .load-field small { font-size: 16px; color: var(--ph-muted); font-family: var(--display); }
 .hint { font-size: 11.5px; color: var(--ph-muted); text-align: center; }
 .stepper button { height: 44px; border-radius: 12px; background: var(--ph-bg); border: 1px solid var(--ph-line); color: var(--ph-ink); font-size: 22px; cursor: pointer; }
@@ -387,7 +387,14 @@ th:first-child, td:first-child { text-align: left; }
   var loadKg = 110;
   var loadInput = document.getElementById("load");
   function stepKg() { return unit === "kg" ? 2.5 : 5 / LB_PER_KG; }
-  function showLoad() { loadInput.value = fmtW(loadKg).replace(/,/g, ""); }
+  // Size the field to its text so a value like 242.5 is never cut off.
+  function fitLoad() {
+    loadInput.style.width = "0px";
+    loadInput.style.width = (loadInput.scrollWidth + 4) + "px";
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLoad);
+  function showLoad() { loadInput.value = fmtW(loadKg).replace(/,/g, ""); fitLoad(); }
+  loadInput.addEventListener("input", fitLoad);
   loadInput.addEventListener("focus", function () { loadInput.select(); });
   loadInput.addEventListener("change", function () {
     var v = parseFloat(loadInput.value.replace(",", "."));
