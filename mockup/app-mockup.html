@@ -164,7 +164,7 @@ th:first-child, td:first-child { text-align: left; }
 <header>
   <span class="tag">Mockup with example data</span>
   <h1>Velocity App: first look</h1>
-  <p>Four screens covering one set from start to finish, plus settings. Tap the exercise chips, the load field, the bar or system power switch, and the kg or lb switch in Settings to see how they respond. Nothing here is measured; the numbers are examples.</p>
+  <p>Four screens covering one set from start to finish, plus the strength profile and settings. Tap the exercise chips, the load field, the bar or system power switch, and the kg or lb switch in Settings to see how they respond. Nothing here is measured; the numbers are examples.</p>
 </header>
 
 <main>
@@ -188,6 +188,7 @@ th:first-child, td:first-child { text-align: left; }
             <div class="big num" id="next-load"><span class="w" data-kg="110">110</span><small class="wu">kg</small></div>
             <div style="text-align:right;font-size:12.5px;color:var(--ph-muted)">Target <b style="color:var(--ph-ink)">0.65–0.80 m/s</b><br>Stop at <b style="color:var(--ph-ink)">20% loss</b></div>
           </div>
+          <div class="row spread" style="font-size:12.5px"><span style="color:var(--ph-muted)">Readiness from warm-up</span><span class="pill good">Normal day</span></div>
           <button class="btn">Set up camera</button>
         </div>
         <div class="tiles">
@@ -241,6 +242,14 @@ th:first-child, td:first-child { text-align: left; }
             <button id="plus" aria-label="Add one step">+</button>
           </div>
           <div class="hint">Tap the number to type a load, or use − and + for <span id="step-label">2.5 kg</span> steps</div>
+        </div>
+        <div class="card">
+          <div class="label">This set is</div>
+          <div class="chips" role="group" aria-label="Set type">
+            <button class="chip settype" aria-pressed="true">Working set</button>
+            <button class="chip settype" aria-pressed="false">Profile test</button>
+            <button class="chip settype" aria-pressed="false">Max single</button>
+          </div>
         </div>
         <button class="btn">Start. Recording begins when the bar moves</button>
       </div>
@@ -320,10 +329,11 @@ th:first-child, td:first-child { text-align: left; }
           <div class="row spread"><div class="label">Best MV at <span class="w" data-kg="100">100</span> <span class="wu">kg</span></div><span class="pill good">+0.08 m/s</span></div>
           <svg id="trend" viewBox="0 0 280 140" role="img" aria-label="Best mean velocity at 100 kg rose from 0.82 to 0.90 m/s over eight sessions"></svg>
         </div>
-        <div class="card chart">
-          <div class="label">Load–velocity profile</div>
-          <svg id="lv" viewBox="0 0 280 140" role="img" aria-label="Mean velocity falls as load rises, projecting an estimated 1RM of 165 kg"></svg>
-          <div class="row spread" style="font-size:13px"><span style="color:var(--ph-muted)">Estimated 1RM</span><b class="num"><span class="w" data-kg="165">165</span> <span class="wu">kg</span></b></div>
+        <div class="card">
+          <div class="row spread"><div class="label">Strength profile</div><span class="pill warn">Retest suggested</span></div>
+          <div class="row spread" style="font-size:13.5px"><span>Estimated 1RM</span><b class="num"><span class="w" data-kg="170">170</span> <span class="wu">kg</span></b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Last profile test</span><b class="num">Oct 6 · 4 weeks ago</b></div>
+          <button class="btn ghost small">Open profile</button>
         </div>
         <div class="card">
           <div class="label">Targets for this exercise</div>
@@ -339,10 +349,49 @@ th:first-child, td:first-child { text-align: left; }
         <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
       </nav>
     </div>
-    <figcaption><b>4. Progress over time</b><span>Trends per exercise, a load–velocity profile with estimated 1RM, and the targets you set.</span></figcaption>
+    <figcaption><b>4. Progress over time</b><span>Trends per exercise and the targets you set. The strength profile sits one tap away instead of updating from every set.</span></figcaption>
   </figure>
 
-  <!-- 5. Settings -->
+  <!-- 5. Strength profile -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:51</span><span>Profile</span></div>
+      <div class="screen">
+        <div class="title"><h2>Profile</h2><small>Back squat</small></div>
+        <div class="card" style="border-color:rgba(240,166,58,.5)">
+          <div class="row spread"><b style="font-size:14px">Time to retest</b><span class="pill warn">4 weeks</span></div>
+          <div style="font-size:12.5px;color:var(--ph-muted)">Your last profile test was Oct 6. A new one at the start of your next session keeps loads and your 1RM estimate current.</div>
+          <button class="btn small">Add profile test to next session</button>
+        </div>
+        <div class="card chart">
+          <div class="row spread"><div class="label">Load–velocity profile</div><span style="font-size:11px;color:var(--ph-muted)">Oct 6 test</span></div>
+          <svg id="lv" viewBox="0 0 280 140" role="img" aria-label="Mean velocity falls as load rises, projecting an estimated 1RM of 170 kg at your 1RM velocity of 0.26 m/s"></svg>
+          <div class="row spread" style="font-size:13.5px"><span>Estimated 1RM</span><b class="num"><span class="w" data-kg="170">170</span> <span class="wu">kg</span></b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Your 1RM velocity</span><b class="num">0.26 m/s</b></div>
+          <div style="font-size:11.5px;color:var(--ph-muted)">From your heavy single on Oct 6 (group default 0.30 m/s). Only sets you tag as profile tests or max singles change this page.</div>
+        </div>
+        <div class="card">
+          <div class="label">Readiness today</div>
+          <div class="row spread" style="font-size:13.5px"><span>Warm-up at <span class="w" data-kg="100">100</span> <span class="wu">kg</span></span><b class="num">0.83 m/s</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Profile says</span><b class="num">0.82 m/s</b></div>
+          <span class="pill good" style="width:fit-content">Normal day</span>
+        </div>
+        <div class="card">
+          <div class="label">Retest reminder</div>
+          <div class="row spread" style="font-size:13.5px"><span>Every</span><b class="num">4 weeks or end of block</b></div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>5. Strength profile</b><span>Load–velocity line and estimated 1RM from tagged profile tests only, a readiness check from today's warm-up, and a reminder to retest monthly or at the end of a block.</span></figcaption>
+  </figure>
+
+  <!-- 6. Settings -->
   <figure>
     <div class="phone">
       <div class="status"><span>9:52</span><span>Settings</span></div>
@@ -385,7 +434,7 @@ th:first-child, td:first-child { text-align: left; }
         <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
       </nav>
     </div>
-    <figcaption><b>5. Settings</b><span>Switch between kilograms and pounds once, and every screen follows. Body mass, defaults and camera options live here too.</span></figcaption>
+    <figcaption><b>6. Settings</b><span>Switch between kilograms and pounds once, and every screen follows. Body mass, defaults and camera options live here too.</span></figcaption>
   </figure>
 </main>
 
@@ -428,6 +477,13 @@ th:first-child, td:first-child { text-align: left; }
     showLoad();
     if (window.drawLv) window.drawLv();
   }
+
+  // Setup: set type.
+  document.querySelectorAll(".settype").forEach(function (c) {
+    c.addEventListener("click", function () {
+      document.querySelectorAll(".settype").forEach(function (o) { o.setAttribute("aria-pressed", o === c ? "true" : "false"); });
+    });
+  });
 
   // Setup: load stepper and typed load, in the chosen unit.
   var loadKg = 110;
@@ -634,19 +690,20 @@ th:first-child, td:first-child { text-align: left; }
 
   var lv = document.getElementById("lv");
   var lvPts = [[60, 1.12], [80, 0.98], [100, 0.86], [120, 0.66], [140, 0.48]];
-  var lsx = function (kg) { return X0 + (kg - 50) / (170 - 50) * (X1 - X0); };
+  var lsx = function (kg) { return X0 + (kg - 50) / (180 - 50) * (X1 - X0); };
   var lsy = function (v) { return Y0 - (v - 0.2) / (1.2 - 0.2) * (Y0 - Y1); };
   axes(lv, X0, X1, Y0, Y1, [0.4, 0.8, 1.2], function (t) { return t.toFixed(1); }, lsx, lsy);
   // Least-squares line through the points, extended to the 1RM velocity of 0.30 m/s.
   var n = lvPts.length, mx = 0, my = 0, sxy = 0, sxx = 0;
   lvPts.forEach(function (p) { mx += p[0] / n; my += p[1] / n; });
   lvPts.forEach(function (p) { sxy += (p[0] - mx) * (p[1] - my); sxx += (p[0] - mx) * (p[0] - mx); });
-  var slope = sxy / sxx, icpt = my - slope * mx, oneRm = (0.30 - icpt) / slope;
-  el(lv, "line", { x1: lsx(55), y1: lsy(icpt + slope * 55), x2: lsx(oneRm), y2: lsy(0.30), stroke: "#5b9bff", "stroke-width": 1.5, "stroke-dasharray": "4 3" });
-  el(lv, "line", { x1: X0, x2: X1, y1: lsy(0.30), y2: lsy(0.30), stroke: "#ef5a5a", "stroke-width": 1, "stroke-dasharray": "2 3" });
-  el(lv, "text", { x: X0 + 2, y: lsy(0.30) - 4, style: "fill:#ef5a5a" }, "1RM velocity 0.30");
+  var MVT = 0.26;
+  var slope = sxy / sxx, icpt = my - slope * mx, oneRm = (MVT - icpt) / slope;
+  el(lv, "line", { x1: lsx(55), y1: lsy(icpt + slope * 55), x2: lsx(oneRm), y2: lsy(MVT), stroke: "#5b9bff", "stroke-width": 1.5, "stroke-dasharray": "4 3" });
+  el(lv, "line", { x1: X0, x2: X1, y1: lsy(MVT), y2: lsy(MVT), stroke: "#ef5a5a", "stroke-width": 1, "stroke-dasharray": "2 3" });
+  el(lv, "text", { x: X0 + 2, y: lsy(MVT) - 4, style: "fill:#ef5a5a" }, "Your 1RM velocity 0.26");
   lvPts.forEach(function (p) { el(lv, "circle", { cx: lsx(p[0]), cy: lsy(p[1]), r: 3, fill: "#5b9bff" }); });
-  el(lv, "circle", { cx: lsx(oneRm), cy: lsy(0.30), r: 4, fill: "none", stroke: "#eef2f6", "stroke-width": 1.5 });
+  el(lv, "circle", { cx: lsx(oneRm), cy: lsy(MVT), r: 4, fill: "none", stroke: "#eef2f6", "stroke-width": 1.5 });
   var lvLabels = [60, 100, 140].map(function (kg) { return el(lv, "text", { x: lsx(kg), y: 134, "text-anchor": "middle" }, ""); });
   window.drawLv = function () { lvLabels.forEach(function (t, i) { t.textContent = fmtW([60, 100, 140][i]) + " " + unit; }); };
   window.drawLv();
