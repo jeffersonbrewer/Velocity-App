@@ -33,12 +33,13 @@ class Mvt:
 # Exercises without a dependable 1RM velocity (Olympic lifts, kettlebell and dumbbell
 # work) are left out on purpose, so no estimated 1RM is shown for them.
 DEFAULT_MVT: dict[str, Mvt] = {
-    "back_squat": Mvt(0.30, "Group averages of roughly 0.30 m/s; trained women 0.36 m/s "
-                            "(Caven et al. 2020, GymAware)", False),
+    "back_squat": Mvt(0.30, "Full squat (Smith machine) mean propulsive velocity 0.30 +/- 0.04 m/s "
+                            "(Conceicao et al. 2016); trained women 0.36 m/s (Caven et al. 2020, GymAware)", True),
     "front_squat": Mvt(0.33, "Less established; no study checked", False),
     "bench_press": Mvt(0.17, "0.17 m/s recommended across studies (Garcia-Ramos et al. 2020, PeerJ); "
                              "powerlifters as low as 0.10 m/s (Helms et al. 2017)", True),
-    "overhead_press": Mvt(0.19, "Not checked against a study", False),
+    "overhead_press": Mvt(0.24, "0.24 m/s from Fahs et al. 2019, as used by Soriano et al. 2022; "
+                                "original paper not checked", False),
     "deadlift": Mvt(0.15, "Not checked against a study", False),
     "sumo_deadlift": Mvt(0.15, "Not checked against a study", False),
     "pull_up": Mvt(0.20, "0.20 +/- 0.05 m/s (Sanchez-Moreno et al. 2017)", True),

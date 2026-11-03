@@ -100,10 +100,10 @@ Default 1RM velocities (mean concentric velocity, from linear-transducer studies
 
 | Exercise | m/s | Checked against a source |
 | --- | --- | --- |
-| Back squat | 0.30 | Partly: trained women averaged 0.36 (Caven et al. 2020) |
+| Back squat | 0.30 | Yes (Conceicao et al. 2016, mean propulsive velocity); trained women averaged 0.36 (Caven et al. 2020) |
 | Front squat | 0.33 | No |
 | Bench press | 0.17 | Yes (Garcia-Ramos et al. 2020; powerlifters lower, about 0.10) |
-| Overhead press | 0.19 | No |
+| Overhead press | 0.24 | Second-hand (Fahs et al. 2019, as cited by Soriano et al. 2022) |
 | Deadlift | 0.15 | No |
 | Pull-up | 0.20 | Yes (Sanchez-Moreno et al. 2017) |
 | Prone bench pull | 0.48 | Yes (Garcia-Ramos et al. 2019) |
