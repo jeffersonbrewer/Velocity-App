@@ -5,6 +5,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from datetime import date  # noqa: E402
+import json  # noqa: E402
+
 from vbt import profile  # noqa: E402
 
 
@@ -46,3 +49,36 @@ def test_warnings_for_thin_or_light_data():
 def test_rejects_rising_velocity():
     with pytest.raises(ValueError):
         profile.fit_profile([60, 80], [0.8, 0.9])
+
+
+def test_retest_prompt():
+    today = date(2026, 11, 3)
+    assert profile.retest_due(None, today) is not None
+    assert profile.retest_due(date(2026, 10, 20), today) is None
+    assert "days ago" in profile.retest_due(date(2026, 10, 1), today)
+    assert "block" in profile.retest_due(date(2026, 10, 20), today, block_end=date(2026, 11, 1))
+
+
+def _result(path, load, mvs, **tags):
+    reps = [{"mean_velocity": v} for v in mvs]
+    path.write_text(json.dumps({"set": {"load_kg": load, "reps": reps}, **tags}))
+
+
+def test_cli_uses_only_profile_tests(tmp_path, capsys):
+    for load in (60, 80, 100, 120):
+        _result(tmp_path / f"p{load}.json", load, [1.62 - 0.008 * load], profile_test=True)
+    # A working set far off the line must be ignored.
+    _result(tmp_path / "work.json", 100, [0.30, 0.28])
+    profile.main([str(p) for p in tmp_path.glob("*.json")] + ["--exercise", "squat"])
+    out = capsys.readouterr().out
+    assert "Skipped 1 working set" in out
+    assert "estimated 1RM 165.0 kg" in out
+
+
+def test_cli_personal_mvt_from_max_single(tmp_path, capsys):
+    for load in (60, 80, 100, 120):
+        _result(tmp_path / f"p{load}.json", load, [1.62 - 0.008 * load], profile_test=True)
+    _result(tmp_path / "max.json", 167.5, [0.26], profile_test=True, max_single=True)
+    profile.main([str(p) for p in tmp_path.glob("*.json")] + ["--exercise", "squat"])
+    out = capsys.readouterr().out
+    assert "0.26 m/s (personal)" in out

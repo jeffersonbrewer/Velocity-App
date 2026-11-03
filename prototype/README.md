@@ -89,12 +89,19 @@ tracking is accurate. Only the GymAware comparison answers that.
 
 ## Estimated 1RM
 
-`vbt/profile.py` fits a straight line of mean velocity against load from several sets of one
-exercise, then reads off the load at the 1RM velocity (minimum velocity threshold):
+`vbt/profile.py` fits a straight line of mean velocity against load, then reads off the load at the
+1RM velocity (minimum velocity threshold). It only uses sets tagged as profile tests, never normal
+working sets: those sit near one load, far above 1RM velocity, so a line through them swings widely.
 
 ```
-.venv/bin/python -m vbt.profile results/squat_*.json --exercise squat
+# A warm-up ramp of 4 to 6 loads, each tagged as a profile test
+.venv/bin/python -m vbt.analyze squat_60.mov --exercise squat --load 60 --profile-test --out results
+# A successful heavy single also sets the lifter's personal 1RM velocity
+.venv/bin/python -m vbt.analyze squat_165.mov --exercise squat --load 165 --max-single --out results
+.venv/bin/python -m vbt.profile results/*.json --exercise squat
 ```
+
+`profile.retest_due` suggests a new profile test every 4 weeks or when a training block ends.
 
 Default 1RM velocities (mean concentric velocity, from linear-transducer studies):
 

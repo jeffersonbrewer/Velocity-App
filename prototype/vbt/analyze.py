@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -89,7 +90,8 @@ def print_report(a: Analysis) -> None:
         print(f"Velocity-loss threshold of {s.velocity_loss_threshold_pct:g}% reached at rep {s.threshold_reached_at_rep}.")
 
 
-def save(a: Analysis, out_dir: Path) -> Path:
+def save(a: Analysis, out_dir: Path, profile_test: bool = False, max_single: bool = False,
+         session_date: str | None = None) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = Path(a.video).stem
     result = {
@@ -99,6 +101,11 @@ def save(a: Analysis, out_dir: Path) -> Path:
         "plate_radius_px": a.track.radius_px,
         "plate_roundness": a.track.roundness,
         "warnings": a.warnings,
+        "date": session_date or date.today().isoformat(),
+        # Only sets tagged as profile tests feed the load-velocity profile and estimated 1RM.
+        "profile_test": profile_test,
+        # A successful 1RM attempt; its velocity sets the lifter's personal 1RM velocity.
+        "max_single": max_single,
         "set": metrics.to_dict(a.set_metrics),
     }
     json_path = out_dir / f"{stem}.json"
@@ -129,6 +136,11 @@ def main(argv=None) -> None:
     p.add_argument("--target", type=float, nargs=2, metavar=("LOW", "HIGH"),
                    help="Target mean velocity zone in m/s")
     p.add_argument("--out", default="results", help="Folder for JSON and trajectory CSV")
+    p.add_argument("--profile-test", action="store_true",
+                   help="Tag this set as part of a load-velocity profile test")
+    p.add_argument("--max-single", action="store_true",
+                   help="Tag this set as a successful 1RM single (implies --profile-test)")
+    p.add_argument("--date", help="Session date, YYYY-MM-DD (default today)")
     args = p.parse_args(argv)
 
     a = analyze_video(args.video, args.exercise, args.load,
@@ -137,7 +149,8 @@ def main(argv=None) -> None:
                       velocity_loss_threshold_pct=args.vl_threshold,
                       target_mean_velocity=tuple(args.target) if args.target else None)
     print_report(a)
-    path = save(a, Path(args.out))
+    path = save(a, Path(args.out), profile_test=args.profile_test or args.max_single,
+                max_single=args.max_single, session_date=args.date)
     print(f"\nSaved {path}")
 
 

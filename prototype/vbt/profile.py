@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
+from datetime import date, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -136,6 +137,21 @@ def estimate_1rm(exercise: str, loads_kg: list[float], mean_velocities: list[flo
     return OneRmEstimate(float(one_rm), float(mvt), source, prof, warnings)
 
 
+RETEST_INTERVAL_DAYS = 28
+
+
+def retest_due(last_test: date | None, today: date, block_end: date | None = None,
+               interval_days: int = RETEST_INTERVAL_DAYS) -> str | None:
+    """Return why a new profile test is suggested, or None. The app only suggests; it never tests on its own."""
+    if last_test is None:
+        return "No profile test yet for this exercise."
+    if block_end is not None and last_test < block_end <= today:
+        return "The training block has ended."
+    if today - last_test >= timedelta(days=interval_days):
+        return f"Last profile test was {(today - last_test).days} days ago."
+    return None
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(description="Estimate 1RM from analyzed sets of one exercise.")
     p.add_argument("results", nargs="+", help="JSON files from vbt.analyze")
@@ -143,15 +159,28 @@ def main(argv=None) -> None:
     p.add_argument("--mvt", type=float, help="1RM velocity to use instead of the default")
     p.add_argument("--use", choices=["best", "first"], default="best",
                    help="Which rep of each set represents the load (default: fastest rep)")
+    p.add_argument("--include-untagged", action="store_true",
+                   help="Also use sets not tagged as profile tests (not recommended)")
     args = p.parse_args(argv)
 
-    loads, vels = [], []
+    loads, vels, singles, skipped = [], [], [], 0
     for path in args.results:
-        s = json.loads(Path(path).read_text())["set"]
+        data = json.loads(Path(path).read_text())
+        if not (data.get("profile_test") or args.include_untagged):
+            skipped += 1
+            continue
+        s = data["set"]
         mvs = [r["mean_velocity"] for r in s["reps"]]
+        if data.get("max_single"):
+            singles.append(min(mvs))
         loads.append(s["load_kg"])
         vels.append(max(mvs) if args.use == "best" else mvs[0])
-    est = estimate_1rm(args.exercise, loads, vels, mvt=args.mvt)
+    if skipped:
+        print(f"Skipped {skipped} working set(s) not tagged as profile tests.")
+    personal = None
+    if singles and args.mvt is None:
+        personal = {ALIASES.get(args.exercise.lower(), args.exercise.lower()): personal_mvt(singles)}
+    est = estimate_1rm(args.exercise, loads, vels, personal=personal, mvt=args.mvt)
     prof = est.profile
     print(f"Profile: MV = {prof.intercept:.3f} {prof.slope:+.5f} x load (R^2 {prof.r2:.3f}, {prof.n_loads} loads)")
     print(f"1RM velocity {est.mvt:.2f} m/s ({est.mvt_source}) -> estimated 1RM {est.one_rm_kg:.1f} kg")
