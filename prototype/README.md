@@ -86,3 +86,30 @@ Results on a simulated 5-rep squat set at 100 kg (mean absolute error per rep, l
 These simulated clips are cleaner than real footage, which adds lighting changes, occlusion,
 camera shake, lens distortion and perspective. They check that the math is right, not that real-world
 tracking is accurate. Only the GymAware comparison answers that.
+
+## Estimated 1RM
+
+`vbt/profile.py` fits a straight line of mean velocity against load from several sets of one
+exercise, then reads off the load at the 1RM velocity (minimum velocity threshold):
+
+```
+.venv/bin/python -m vbt.profile results/squat_*.json --exercise squat
+```
+
+Default 1RM velocities (mean concentric velocity, from linear-transducer studies):
+
+| Exercise | m/s | Checked against a source |
+| --- | --- | --- |
+| Back squat | 0.30 | Partly: trained women averaged 0.36 (Caven et al. 2020) |
+| Front squat | 0.33 | No |
+| Bench press | 0.17 | Yes (Garcia-Ramos et al. 2020; powerlifters lower, about 0.10) |
+| Overhead press | 0.19 | No |
+| Deadlift | 0.15 | No |
+| Pull-up | 0.20 | Yes (Sanchez-Moreno et al. 2017) |
+| Prone bench pull | 0.48 | Yes (Garcia-Ramos et al. 2019) |
+| Hip thrust | 0.25 | No |
+
+Individual 1RM velocities vary widely, so a lifter's own value, the slowest successful heavy single
+recorded with this system (`profile.personal_mvt`), replaces the default as soon as it exists.
+Olympic lifts and kettlebell or dumbbell work have no default, so no 1RM is estimated for them
+unless a personal value is set.
