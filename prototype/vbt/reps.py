@@ -26,7 +26,7 @@ class Rep:
 
 
 # Exercises that start with the lowering phase (squat, bench) versus the lifting phase (deadlift).
-CONCENTRIC_FIRST = {"deadlift", "rdl_from_floor", "clean", "snatch", "power_clean", "row", "pendlay_row"}
+CONCENTRIC_FIRST = {"deadlift", "trap_bar_deadlift", "sumo_deadlift", "rdl_from_floor", "clean", "snatch", "power_clean", "row", "pendlay_row"}
 
 
 def segment(kin: Kinematics, exercise: str = "squat", v_thresh: float = 0.05,
