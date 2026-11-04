@@ -43,6 +43,8 @@ DEFAULT_MVT: dict[str, Mvt] = {
                                 "original paper not checked", False),
     "deadlift": Mvt(0.15, "Not checked against a study", False),
     "sumo_deadlift": Mvt(0.15, "Not checked against a study", False),
+    "trap_bar_deadlift": Mvt(0.15, "GymAware's 1RM velocity for the trap bar deadlift (supplied by Jefferson); "
+                                   "no study checked", False),
     "pull_up": Mvt(0.20, "0.20 +/- 0.05 m/s (Sanchez-Moreno et al. 2017)", True),
     "prone_bench_pull": Mvt(0.48, "Mean velocity 0.479 +/- 0.032 m/s, free weight "
                                   "(Garcia-Ramos et al. 2019, PLOS ONE)", True),
@@ -50,7 +52,8 @@ DEFAULT_MVT: dict[str, Mvt] = {
 }
 ALIASES = {"squat": "back_squat", "bench": "bench_press", "ohp": "overhead_press",
            "press": "overhead_press", "chin_up": "pull_up", "bench_pull": "prone_bench_pull",
-           "row": "prone_bench_pull"}
+           "row": "prone_bench_pull",
+           "trap_bar": "trap_bar_deadlift", "hex_bar": "trap_bar_deadlift", "hex_bar_deadlift": "trap_bar_deadlift"}
 
 
 def resolve_mvt(exercise: str, personal: dict[str, float] | None = None) -> tuple[float, str] | None:

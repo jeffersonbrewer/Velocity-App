@@ -112,6 +112,7 @@ Default 1RM velocities (mean concentric velocity, from linear-transducer studies
 | Bench press | 0.17 | Yes (Garcia-Ramos et al. 2020; powerlifters lower, about 0.10) |
 | Overhead press | 0.24 | Second-hand (Fahs et al. 2019, as cited by Soriano et al. 2022) |
 | Deadlift | 0.15 | No |
+| Trap bar deadlift | 0.15 | GymAware's value, no study checked |
 | Pull-up | 0.20 | Yes (Sanchez-Moreno et al. 2017) |
 | Prone bench pull | 0.48 | Yes (Garcia-Ramos et al. 2019) |
 | Hip thrust | 0.25 | No |
