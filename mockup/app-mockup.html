@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velocity App Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: four phone screens side by side (wrapping on small screens), each a step of one set: session, setup, results, history. */
+:root {
+  --page: #eef1f4;
+  --ink: #18202a;
+  --muted: #5b6673;
+  --line: #d3d9e0;
+  --accent: #2f6fe4;
+  /* Phone UI is always dark, like a gym app used under bright lights */
+  --ph-bg: #0f141a;
+  --ph-card: #19212b;
+  --ph-line: #2a3542;
+  --ph-ink: #eef2f6;
+  --ph-muted: #8b98a7;
+  --ph-accent: #5b9bff;
+  --good: #3fbf7f;
+  --warn: #f0a63a;
+  --bad: #ef5a5a;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0b0e12; --ink: #e6ebf0; --muted: #96a2ae; --line: #253040; --accent: #6ea1ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0b0e12; --ink: #e6ebf0; --muted: #96a2ae; --line: #253040; --accent: #6ea1ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+header { max-width: 1400px; margin: 0 auto; padding: 28px 16px 8px; display: grid; gap: 6px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 34px; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+.tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 1px 10px; width: fit-content; }
+main { max-width: 1400px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
+figure { margin: 0; display: grid; gap: 10px; width: 320px; max-width: 100%; }
+figcaption { display: grid; gap: 2px; }
+figcaption b { font-family: var(--display); font-size: 20px; font-weight: 600; }
+figcaption span { color: var(--muted); font-size: 13.5px; }
+
+.phone { background: var(--ph-bg); color: var(--ph-ink); border-radius: 38px; border: 8px solid #05070a; height: 690px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 18px 40px rgba(10,20,40,.18); position: relative; }
+.status { display: flex; justify-content: space-between; padding: 10px 22px 4px; font-size: 12px; font-weight: 600; }
+.screen > * { flex: none; }
+.screen { flex: 1; overflow-y: auto; padding: 6px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.title { display: flex; justify-content: space-between; align-items: baseline; }
+.title h2 { font-family: var(--display); font-size: 26px; font-weight: 700; margin: 0; }
+.title small { color: var(--ph-muted); font-size: 12px; }
+.card { background: var(--ph-card); border: 1px solid var(--ph-line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+.label { color: var(--ph-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.big { font-family: var(--display); font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.big small { font-size: 16px; color: var(--ph-muted); font-weight: 500; margin-left: 2px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row.spread { justify-content: space-between; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.num { font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chip { flex: none; background: transparent; color: var(--ph-ink); border: 1px solid var(--ph-line); border-radius: 99px; padding: 6px 12px; font: 500 13px var(--body); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ph-accent); border-color: var(--ph-accent); color: #061226; }
+.chip:focus-visible, .btn:focus-visible, .seg button:focus-visible, .tab:focus-visible { outline: 2px solid var(--ph-accent); outline-offset: 2px; }
+.btn { border: 0; border-radius: 14px; padding: 14px; font: 600 16px var(--body); background: var(--ph-accent); color: #061226; cursor: pointer; width: 100%; }
+.btn.ghost { background: transparent; color: var(--ph-ink); border: 1px solid var(--ph-line); }
+.list { display: grid; }
+.list .item { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 10px 0; border-top: 1px solid var(--ph-line); }
+.list .item:first-child { border-top: 0; }
+.item b { font-weight: 600; font-size: 14px; }
+.item span { color: var(--ph-muted); font-size: 12.5px; }
+.item .pill { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.pill { font-size: 11.5px; font-weight: 600; border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+.pill.good { background: rgba(63,191,127,.16); color: var(--good); }
+.pill.warn { background: rgba(240,166,58,.16); color: var(--warn); }
+.pill.bad { background: rgba(239,90,90,.16); color: var(--bad); }
+.pill.idle { background: rgba(139,152,167,.16); color: var(--ph-muted); }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ph-line); padding: 8px 6px 16px; background: var(--ph-bg); }
+.tab { background: none; border: 0; color: var(--ph-muted); font: 500 11px var(--body); display: grid; justify-items: center; gap: 3px; padding: 2px; }
+.tab svg { width: 20px; height: 20px; }
+.tab.on { color: var(--ph-accent); }
+
+/* Camera */
+.viewfinder { position: relative; border-radius: 14px; overflow: hidden; height: 300px; background: linear-gradient(180deg, #2b333d, #1b2128 70%, #14181d); }
+.viewfinder .rack { position: absolute; top: 0; bottom: 0; width: 18px; background: #3a434e; }
+.viewfinder .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: #262c33; }
+.plate { position: absolute; width: 112px; height: 112px; border-radius: 50%; background: radial-gradient(circle, #c9cfd6 0 11%, #4c5560 12% 22%, #22272e 23% 92%, #343b44 93%); left: 92px; top: 70px; }
+.ring { position: absolute; width: 124px; height: 124px; left: 86px; top: 64px; border: 2px solid var(--good); border-radius: 50%; }
+.ring::after { content: "45 cm plate"; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: var(--good); background: rgba(10,15,20,.7); padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+.path { position: absolute; left: 147px; top: 30px; height: 220px; border-left: 2px dashed rgba(91,155,255,.7); }
+.vf-badge { position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 600; background: rgba(10,15,20,.7); padding: 3px 8px; border-radius: 8px; }
+.vf-badge.rec { left: auto; right: 10px; color: var(--bad); }
+.checks { display: grid; gap: 6px; }
+.check { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(63,191,127,.18); }
+.check span:last-child { color: var(--ph-muted); font-size: 12.5px; }
+.stepper { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; }
+.load-field { min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 2px; border-radius: 10px; padding: 2px 4px; cursor: text; }
+.load-field:focus-within { box-shadow: 0 0 0 2px var(--ph-accent); }
+.load-field input { width: 3ch; min-width: 2ch; max-width: 100%; field-sizing: content; background: transparent; border: 0; color: var(--ph-ink); font: 700 40px/1 var(--display); text-align: right; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
+.load-field small { font-size: 16px; color: var(--ph-muted); font-family: var(--display); }
+.hint { font-size: 11.5px; color: var(--ph-muted); text-align: center; }
+.stepper button { height: 44px; border-radius: 12px; background: var(--ph-bg); border: 1px solid var(--ph-line); color: var(--ph-ink); font-size: 22px; cursor: pointer; }
+
+/* Results */
+.bars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; align-items: end; height: 130px; position: relative; padding-top: 6px; }
+.zone { position: absolute; left: 0; right: 0; background: rgba(63,191,127,.10); border-top: 1px dashed rgba(63,191,127,.6); border-bottom: 1px dashed rgba(63,191,127,.6); }
+.zone span { position: absolute; left: 2px; bottom: 1px; font-size: 10px; color: var(--good); }
+.bar { position: relative; border-radius: 6px 6px 2px 2px; display: flex; justify-content: center; }
+.bar em { position: absolute; top: -18px; font-style: normal; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar-x { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; text-align: center; font-size: 11px; color: var(--ph-muted); }
+.meter { height: 8px; border-radius: 99px; background: var(--ph-bg); position: relative; overflow: visible; }
+.meter i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--warn); }
+.meter b { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--bad); }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th { color: var(--ph-muted); font-weight: 500; text-align: right; padding: 4px 2px; font-size: 11px; }
+td { text-align: right; padding: 5px 2px; border-top: 1px solid var(--ph-line); }
+th:first-child, td:first-child { text-align: left; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--ph-bg); border: 1px solid var(--ph-line); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: transparent; color: var(--ph-muted); font: 500 12.5px var(--body); padding: 6px; border-radius: 8px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ph-card); color: var(--ph-ink); box-shadow: 0 0 0 1px var(--ph-line); }
+
+/* Rep editing */
+#reps tr { cursor: pointer; }
+#reps tr:hover td, #reps tr:focus-visible td { background: rgba(91,155,255,.08); }
+#reps tr:focus-visible { outline: 2px solid var(--ph-accent); outline-offset: -2px; }
+#reps tr.deleted td { color: var(--ph-muted); text-decoration: line-through; }
+#reps tr.adjusted td:first-child::after { content: "•"; color: var(--ph-accent); margin-left: 3px; }
+.bar.off { background: var(--ph-line) !important; }
+.bar.off em { color: var(--ph-muted); text-decoration: line-through; }
+.sheet-wrap { position: absolute; inset: 0; background: rgba(5,8,12,.55); display: none; align-items: flex-end; z-index: 5; }
+.sheet-wrap.open { display: flex; }
+.sheet { background: var(--ph-card); border-top: 1px solid var(--ph-line); border-radius: 20px 20px 0 0; padding: 14px 14px 22px; width: 100%; display: grid; gap: 10px; }
+.sheet h3 { font-family: var(--display); font-size: 22px; margin: 0; }
+.sheet svg { width: 100%; height: auto; display: block; background: var(--ph-bg); border-radius: 10px; }
+.sheet .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+.sheet .stats b { display: block; font-family: var(--display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.sheet .stats span { color: var(--ph-muted); font-size: 11px; }
+.sheet label { font-size: 12px; color: var(--ph-muted); display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 8px; }
+.sheet input[type=range] { width: 100%; accent-color: var(--ph-accent); }
+.sheet .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn.danger { background: transparent; color: var(--bad); border: 1px solid rgba(239,90,90,.5); }
+.btn.small { padding: 10px; font-size: 14px; }
+/* History chart */
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--ph-muted); font-size: 10px; font-family: var(--body); }
+
+.notes { max-width: 1400px; margin: 0 auto; padding: 0 16px 48px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.notes div { border-top: 2px solid var(--line); padding-top: 10px; }
+.notes h3 { font-family: var(--display); font-size: 19px; font-weight: 600; margin: 0 0 4px; }
+.notes p { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* Program screens */
+.part { padding-top: 8px; }
+.part h1 { font-size: 28px; }
+.timeline { display: grid; grid-template-columns: repeat(var(--n, 6), 1fr); gap: 4px; }
+.timeline div { height: 30px; border-radius: 7px; background: var(--ph-bg); border: 1px solid var(--ph-line); display: grid; place-items: center; font: 600 12px var(--body); color: var(--ph-muted); }
+.timeline .done { background: rgba(91,155,255,.18); border-color: transparent; color: var(--ph-ink); }
+.timeline .now { background: var(--ph-accent); border-color: var(--ph-accent); color: #061226; }
+.timeline .deload { border-style: dashed; }
+.tl-x { display: flex; justify-content: space-between; font-size: 11px; color: var(--ph-muted); }
+.day { display: grid; grid-template-columns: 38px 1fr auto; gap: 2px 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--ph-line); }
+.day:first-child { border-top: 0; }
+.day .dow { grid-row: 1 / span 2; font: 700 15px var(--display); color: var(--ph-muted); text-transform: uppercase; }
+.day b { font-size: 14px; font-weight: 600; }
+.day span { font-size: 12.5px; color: var(--ph-muted); }
+.day .pill { grid-row: 1 / span 2; grid-column: 3; }
+.kv { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+.kv b { font-variant-numeric: tabular-nums; text-align: right; }
+.sub { font-size: 12.5px; color: var(--ph-muted); }
+.ramp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+.ramp div { background: var(--ph-bg); border: 1px solid var(--ph-line); border-radius: 10px; padding: 6px 2px; }
+.ramp div.key { border-color: var(--ph-accent); }
+.ramp b { display: block; font: 700 18px var(--display); font-variant-numeric: tabular-nums; }
+.ramp > div > span { font-size: 10.5px; color: var(--ph-muted); }
+.acc { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; padding: 8px 0; border-top: 1px solid var(--ph-line); }
+.acc:first-of-type { border-top: 0; }
+.acc b { font-size: 13.5px; font-weight: 600; }
+.acc span { font-size: 12px; color: var(--ph-muted); }
+.acc .r { text-align: right; font-variant-numeric: tabular-nums; color: var(--ph-ink); font-size: 13px; }
+.acc.cut b, .acc.cut .r { color: var(--ph-muted); text-decoration: line-through; }
+[hidden] { display: none !important; }
+.banner { border-radius: 12px; padding: 10px 12px; font-size: 12.5px; display: grid; gap: 4px; }
+.banner.warn { background: rgba(240,166,58,.12); border: 1px solid rgba(240,166,58,.45); }
+.banner.bad { background: rgba(239,90,90,.10); border: 1px solid rgba(239,90,90,.45); }
+.banner.info { background: rgba(91,155,255,.10); border: 1px solid rgba(91,155,255,.4); }
+.banner b { font-size: 13.5px; }
+.progress { height: 8px; border-radius: 99px; background: var(--ph-bg); overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--ph-accent); border-radius: 99px; }
+.mini td, .mini th { padding: 4px 2px; }
+.mini td:last-child, .mini th:last-child { text-align: left; padding-left: 8px; color: var(--ph-muted); }
+.mini tr.dl td { color: var(--ph-muted); }
+.sw { display: flex; gap: 6px; flex-wrap: wrap; }
+.stepper.sm { grid-template-columns: 36px 1fr 36px; }
+.stepper.sm button { height: 36px; font-size: 18px; }
+.stepper.sm b { font: 700 22px var(--display); }
+@media (prefers-reduced-motion: no-preference) { .bar { transition: height .3s ease; } }
+</style>
+</head>
+<body>
+<header>
+  <span class="tag">Mockup with example data</span>
+  <h1>Velocity App: first look</h1>
+  <p>Screens 1–6 cover one set from start to finish, plus the strength profile and settings. Screens 7–11 show the program built from your profile. Tap the exercise chips, the load field, the bar or system power switch, and the kg or lb switch in Settings to see how they respond. Nothing here is measured; the numbers are examples.</p>
+</header>
+
+<main>
+  <!-- 1. Session -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>Today</span></div>
+      <div class="screen">
+        <div class="title"><h2>Today</h2><small>Lower body A</small></div>
+        <div class="chips" role="group" aria-label="Switch exercise">
+          <button class="chip" aria-pressed="true" data-ex="Back squat" data-load="110">Back squat</button>
+          <button class="chip" aria-pressed="false" data-ex="Romanian deadlift" data-load="100">RDL</button>
+          <button class="chip" aria-pressed="false" data-ex="Weighted pull-up" data-load="20">Pull-up</button>
+          <button class="chip" aria-pressed="false" data-ex="KB swing" data-load="32">KB swing</button>
+          <button class="chip" aria-pressed="false" data-ex="New exercise" data-load="0">+ Add</button>
+        </div>
+        <div class="card">
+          <div class="label">Next set</div>
+          <div class="row spread"><b id="next-ex" style="font-size:18px">Back squat</b><span class="pill idle" id="next-mode">Plate tracking</span></div>
+          <div class="row spread">
+            <div class="big num" id="next-load"><span class="w" data-kg="110">110</span><small class="wu">kg</small></div>
+            <div style="text-align:right;font-size:12.5px;color:var(--ph-muted)">Target <b style="color:var(--ph-ink)">0.65–0.80 m/s</b><br>Stop at <b style="color:var(--ph-ink)">20% loss</b></div>
+          </div>
+          <div class="row spread" style="font-size:12.5px"><span style="color:var(--ph-muted)">Readiness from warm-up</span><span class="pill good">Normal day</span></div>
+          <button class="btn">Set up camera</button>
+        </div>
+        <div class="tiles">
+          <div class="card"><div class="label">Session volume</div><div class="big num"><span class="w" data-kg="4950">4950</span><small class="wu">kg</small></div></div>
+          <div class="card"><div class="label">Best MV today</div><div class="big num">0.82<small>m/s</small></div></div>
+        </div>
+        <div class="card">
+          <div class="label">Done so far</div>
+          <div class="list">
+            <div class="item"><b>Back squat · <span class="w" data-kg="100">100</span> <span class="wu">kg</span> × 5</b><span class="pill good">On target</span><span>MV 0.74 · loss 14%</span></div>
+            <div class="item"><b>Back squat · <span class="w" data-kg="100">100</span> <span class="wu">kg</span> × 5</b><span class="pill good">On target</span><span>MV 0.72 · loss 17%</span></div>
+            <div class="item"><b>Back squat · <span class="w" data-kg="110">110</span> <span class="wu">kg</span> × 5</b><span class="pill warn">Near cutoff</span><span>MV 0.66 · loss 19%</span></div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>1. Today's session</b><span>Switch exercises with one tap. Each one remembers its last load, target zone and fatigue cutoff.</span></figcaption>
+  </figure>
+
+  <!-- 2. Camera setup -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:43</span><span>240 fps</span></div>
+      <div class="screen">
+        <div class="title"><h2>Set up</h2><small>Back squat</small></div>
+        <div class="viewfinder" aria-label="Camera view with the plate detected">
+          <div class="rack" style="left:228px"></div><div class="rack" style="left:270px"></div>
+          <div class="floor"></div>
+          <div class="path"></div>
+          <div class="plate"></div><div class="ring"></div>
+          <span class="vf-badge">Slow motion · 240 fps</span>
+          <span class="vf-badge rec">● Ready</span>
+        </div>
+        <div class="card checks">
+          <div class="check"><span class="dot"></span><span>Plate found</span><span>45 cm</span></div>
+          <div class="check"><span class="dot"></span><span>Camera square to the bar</span><span>99% round</span></div>
+          <div class="check"><span class="dot"></span><span>Whole bar path in frame</span><span>OK</span></div>
+          <div class="check"><span class="dot"></span><span>Phone steady</span><span>On tripod</span></div>
+        </div>
+        <div class="card">
+          <div class="label">Load on the bar</div>
+          <div class="stepper">
+            <button id="minus" aria-label="Remove one step">−</button>
+            <label class="load-field" for="load"><input id="load" type="text" inputmode="decimal" value="110" aria-label="Load"><small class="wu">kg</small></label>
+            <button id="plus" aria-label="Add one step">+</button>
+          </div>
+          <div class="hint">Tap the number to type a load, or use − and + for <span id="step-label">2.5 kg</span> steps</div>
+        </div>
+        <div class="card">
+          <div class="label">This set is</div>
+          <div class="chips" role="group" aria-label="Set type">
+            <button class="chip settype" aria-pressed="true">Working set</button>
+            <button class="chip settype" aria-pressed="false">Profile test</button>
+            <button class="chip settype" aria-pressed="false">Max single</button>
+          </div>
+        </div>
+        <button class="btn">Start. Recording begins when the bar moves</button>
+      </div>
+    </div>
+    <figcaption><b>2. Camera setup</b><span>The app finds the plate and checks the angle before you lift, so a bad setup is caught before the set, not after.</span></figcaption>
+  </figure>
+
+  <!-- 3. Set results -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:45</span><span>Set 4</span></div>
+      <div class="screen">
+        <div class="title"><h2>Set 4</h2><small>Back squat · <span class="w" data-kg="110">110</span> <span class="wu">kg</span> × <span id="rep-count">5</span></small></div>
+        <div class="tiles">
+          <div class="card"><div class="label">Mean velocity</div><div class="big num"><span id="set-mv">0.72</span><small>m/s</small></div></div>
+          <div class="card"><div class="label">Best peak</div><div class="big num"><span id="set-pv">1.40</span><small>m/s</small></div></div>
+        </div>
+        <div class="card">
+          <div class="row spread">
+            <div class="label" id="vel-label">Mean by rep</div>
+            <div class="seg" role="group" aria-label="Velocity shown" style="width:118px">
+              <button id="v-mean" aria-pressed="true">Mean</button>
+              <button id="v-peak" aria-pressed="false">Peak</button>
+            </div>
+          </div>
+          <div class="bars" id="bars"></div>
+          <div class="bar-x"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+          <div class="row spread" style="font-size:12px"><span style="color:var(--ph-muted)" id="zone-note">Target 0.65–0.80 m/s</span><span class="pill good" id="zone-pill">All reps in zone</span></div>
+        </div>
+        <div class="card">
+          <div class="row spread"><div class="label" id="loss-label">Velocity loss</div><b class="num"><span id="loss-val">15%</span> <span style="color:var(--ph-muted);font-weight:400">of 20% cutoff</span></b></div>
+          <div class="meter"><i id="loss-bar" style="width:60%"></i><b style="left:80%"></b></div>
+        </div>
+        <div class="card">
+          <div class="row spread">
+            <div class="label">Each rep</div>
+            <div class="seg" role="group" aria-label="Power shown">
+              <button id="pw-bar" aria-pressed="true">Bar</button>
+              <button id="pw-sys" aria-pressed="false">System</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Rep</th><th>MV</th><th>PV</th><th>MP W</th><th>PP W</th><th>Up m</th><th>Down m</th></tr></thead>
+            <tbody id="reps"></tbody>
+          </table>
+          <div class="hint">Tap a rep to adjust where it starts and ends, or delete it</div>
+        </div>
+      </div>
+      <div class="sheet-wrap" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+        <div class="sheet">
+          <div class="row spread"><h3 id="sheet-title">Rep 3</h3><button class="chip" id="sheet-close">Cancel</button></div>
+          <svg id="sheet-trace" viewBox="0 0 280 90" aria-label="Bar velocity during the rep, with the counted part shaded"></svg>
+          <label for="trim-start">Start<input type="range" id="trim-start" min="0" max="40" value="0"></label>
+          <label for="trim-end">End<input type="range" id="trim-end" min="60" max="100" value="100"></label>
+          <div class="stats">
+            <div><b id="sh-mv">0.73</b><span>Mean m/s</span></div>
+            <div><b id="sh-pv">1.31</b><span>Peak m/s</span></div>
+            <div><b id="sh-up">0.55</b><span>Up m</span></div>
+          </div>
+          <div class="actions">
+            <button class="btn danger small" id="sheet-delete">Delete rep</button>
+            <button class="btn small" id="sheet-save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>3. Set results</b><span>Shown seconds after you rack the bar. The green band is your target zone. Switch between bar power and system power (bar plus 80% of body mass).</span></figcaption>
+  </figure>
+
+  <!-- 4. History -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:50</span><span>History</span></div>
+      <div class="screen">
+        <div class="title"><h2>Back squat</h2><small>Last 8 sessions</small></div>
+        <div class="card chart">
+          <div class="row spread"><div class="label">Best MV at <span class="w" data-kg="100">100</span> <span class="wu">kg</span></div><span class="pill good">+0.08 m/s</span></div>
+          <svg id="trend" viewBox="0 0 280 140" role="img" aria-label="Best mean velocity at 100 kg rose from 0.82 to 0.90 m/s over eight sessions"></svg>
+        </div>
+        <div class="card">
+          <div class="row spread"><div class="label">Strength profile</div><span class="pill warn">Retest suggested</span></div>
+          <div class="row spread" style="font-size:13.5px"><span>Estimated 1RM</span><b class="num"><span class="w" data-kg="170">170</span> <span class="wu">kg</span></b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Last profile test</span><b class="num">Oct 6 · 4 weeks ago</b></div>
+          <button class="btn ghost small">Open profile</button>
+        </div>
+        <div class="card">
+          <div class="label">Targets for this exercise</div>
+          <div class="row spread" style="font-size:13.5px"><span>Velocity zone</span><b class="num">0.65–0.80 m/s</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Stop set at</span><b class="num">20% loss</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Body mass counted</span><b class="num">80%</b></div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>4. Progress over time</b><span>Trends per exercise and the targets you set. The strength profile sits one tap away instead of updating from every set.</span></figcaption>
+  </figure>
+
+  <!-- 5. Strength profile -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:51</span><span>Profile</span></div>
+      <div class="screen">
+        <div class="title"><h2>Profile</h2><small>Back squat</small></div>
+        <div class="card" style="border-color:rgba(240,166,58,.5)">
+          <div class="row spread"><b style="font-size:14px">Time to retest</b><span class="pill warn">4 weeks</span></div>
+          <div style="font-size:12.5px;color:var(--ph-muted)">Your last profile test was Oct 6. A new one at the start of your next session keeps loads and your 1RM estimate current.</div>
+          <button class="btn small">Add profile test to next session</button>
+        </div>
+        <div class="card chart">
+          <div class="row spread"><div class="label">Load–velocity profile</div><span style="font-size:11px;color:var(--ph-muted)">Oct 6 test</span></div>
+          <svg id="lv" viewBox="0 0 280 140" role="img" aria-label="Mean velocity falls as load rises, projecting an estimated 1RM of 170 kg at your 1RM velocity of 0.26 m/s"></svg>
+          <div class="row spread" style="font-size:13.5px"><span>Estimated 1RM</span><b class="num"><span class="w" data-kg="170">170</span> <span class="wu">kg</span></b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Your 1RM velocity</span><b class="num">0.26 m/s</b></div>
+          <div style="font-size:11.5px;color:var(--ph-muted)">From your heavy single on Oct 6 (group default 0.30 m/s). Only sets you tag as profile tests or max singles change this page.</div>
+        </div>
+        <div class="card">
+          <div class="label">Readiness today</div>
+          <div class="row spread" style="font-size:13.5px"><span>Warm-up at <span class="w" data-kg="100">100</span> <span class="wu">kg</span></span><b class="num">0.83 m/s</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Profile says</span><b class="num">0.82 m/s</b></div>
+          <span class="pill good" style="width:fit-content">Normal day</span>
+        </div>
+        <div class="card">
+          <div class="label">Retest reminder</div>
+          <div class="row spread" style="font-size:13.5px"><span>Every</span><b class="num">4 weeks or end of block</b></div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>5. Strength profile</b><span>Load–velocity line and estimated 1RM from tagged profile tests only, a readiness check from today's warm-up, and a reminder to retest monthly or at the end of a block.</span></figcaption>
+  </figure>
+
+  <!-- 6. Settings -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>9:52</span><span>Settings</span></div>
+      <div class="screen">
+        <div class="title"><h2>Settings</h2><small>Applies everywhere</small></div>
+        <div class="card">
+          <div class="row spread">
+            <div><b style="font-size:14px">Weight units</b><div style="color:var(--ph-muted);font-size:12px">Loads, volume and body mass</div></div>
+            <div class="seg" role="group" aria-label="Weight units" style="width:110px">
+              <button id="u-kg" aria-pressed="true">kg</button>
+              <button id="u-lb" aria-pressed="false">lb</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="label">About you</div>
+          <div class="row spread" style="font-size:13.5px"><span>Body mass</span><b class="num"><span class="w" data-kg="85">85</span> <span class="wu">kg</span></b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Height</span><b class="num">180 cm</b></div>
+        </div>
+        <div class="card">
+          <div class="label">Defaults for new exercises</div>
+          <div class="row spread" style="font-size:13.5px"><span>Stop set at</span><b class="num">20% loss</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Load step</span><b class="num" id="step-setting">2.5 kg</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Bar weight</span><b class="num"><span class="w" data-kg="20">20</span> <span class="wu">kg</span></b></div>
+        </div>
+        <div class="card">
+          <div class="label">Camera</div>
+          <div class="row spread" style="font-size:13.5px"><span>Frame rate</span><b class="num">240 fps</b></div>
+          <div class="row spread" style="font-size:13.5px"><span>Plate facing camera</span><b class="num">45 cm (standard)</b></div>
+        </div>
+        <div class="card">
+          <div class="label">Feedback</div>
+          <div class="row spread" style="font-size:13.5px"><span>Sound at fatigue cutoff</span><b class="num" style="color:var(--good)">On</b></div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>6. Settings</b><span>Switch between kilograms and pounds once, and every screen follows. Body mass, defaults and camera options live here too.</span></figcaption>
+  </figure>
+</main>
+
+<header class="part">
+  <span class="tag">Program</span>
+  <h1>Programming from your profile</h1>
+  <p>Your plan is written in %1RM. The app turns each percentage into a load and a target velocity from your strength profile, then adjusts for today's readiness. Tap the readiness readings on screen 8, and the goal, length and training-level options on screen 11.</p>
+</header>
+
+<main>
+  <!-- 7. Program overview -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>7:02</span><span>Program</span></div>
+      <div class="screen">
+        <div class="title"><h2>Program</h2><small>Block 2 of 3</small></div>
+        <div class="card">
+          <div class="row spread"><b style="font-size:17px">Maximal strength</b><span class="pill idle">Week 3 of 6</span></div>
+          <div class="timeline" style="--n:6" aria-label="Block of 6 weeks, now in week 3, week 6 is the deload">
+            <div class="done">1</div><div class="done">2</div><div class="now">3</div><div>4</div><div>5</div><div class="deload">6</div>
+          </div>
+          <div class="tl-x"><span>Started Oct 20</span><span>Wk 6: deload + retest</span></div>
+        </div>
+        <div class="card">
+          <div class="label">This week</div>
+          <div class="list">
+            <div class="day"><span class="dow">Mon</span><b>Strength · back squat</b><span class="pill good">Today</span><span>80–82% · 4 sets · stop at 20% loss</span></div>
+            <div class="day"><span class="dow">Wed</span><b>Power · speed squat</b><span class="pill idle">Planned</span><span>40–50% · 5 sets · stop at 10% loss</span></div>
+            <div class="day"><span class="dow">Fri</span><b>Hypertrophy · front squat</b><span class="pill idle">Planned</span><span>70–72% · 4 sets · stop at 30% loss</span></div>
+          </div>
+          <div class="sub">Each day has its own goal (undulating). All three convert through the same profile.</div>
+        </div>
+        <div class="card">
+          <div class="label">Loads are based on</div>
+          <div class="kv"><span>Back squat estimated 1RM</span><b><span class="w" data-kg="170">170</span> <span class="wu">kg</span></b></div>
+          <div class="kv"><span>From</span><b>Profile test, Oct 17</b></div>
+          <div class="kv"><span>Next retest</span><b>End of week 6</b></div>
+        </div>
+        <div class="card">
+          <div class="label">Up next</div>
+          <div class="kv"><span>Block 3</span><b>Peaking · 4 weeks</b></div>
+          <button class="btn ghost small">Edit program</button>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>7. Program overview</b><span>Where you are in the block, this week's sessions with their goals, and which 1RM the loads come from. You choose the block order.</span></figcaption>
+  </figure>
+
+  <!-- 8. Today's plan with readiness -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>7:15</span><span>Today</span></div>
+      <div class="screen">
+        <div class="title"><h2>Today</h2><small>Week 3 · Strength</small></div>
+        <div class="card">
+          <div class="label">Warm-up and readiness check</div>
+          <div class="ramp">
+            <div><b><span class="w" data-kg="60">60</span></b><span>warm-up</span></div>
+            <div><b><span class="w" data-kg="80">80</span></b><span>warm-up</span></div>
+            <div class="key"><b><span class="w" data-kg="102.5">102.5</span></b><span>60% · checked</span></div>
+          </div>
+          <div class="kv"><span>Expected at 60%</span><b>0.80 m/s</b></div>
+          <div class="kv"><span>You moved it at</span><b><span id="rd-mv">0.80</span> m/s (<span id="rd-delta">±0.00</span>)</b></div>
+          <div class="sub">Try a reading:</div>
+          <div class="chips" role="group" aria-label="Example readiness reading" id="rd-chips" style="flex-wrap:wrap">
+            <button class="chip" aria-pressed="false" data-d="0.06">+0.06</button>
+            <button class="chip" aria-pressed="false" data-d="0.04">+0.04</button>
+            <button class="chip" aria-pressed="true" data-d="0">0.00</button>
+            <button class="chip" aria-pressed="false" data-d="-0.04">−0.04</button>
+            <button class="chip" aria-pressed="false" data-d="-0.07">−0.07</button>
+            <button class="chip" aria-pressed="false" data-d="-0.11">−0.11</button>
+          </div>
+          <div class="row spread"><span class="sub" id="rd-adj">No change to today's plan</span><span class="pill good" id="rd-pill">Normal</span></div>
+        </div>
+        <div class="banner bad" id="rd-banner" hidden><b>Well down today</b><span>Load is cut 10% and accessories are dropped. You can also switch to a lighter goal or take a rest day.</span></div>
+        <div class="card">
+          <div class="row spread"><b style="font-size:17px">Back squat</b><span class="pill idle">81% planned</span></div>
+          <div class="row spread">
+            <div class="big num"><span id="pl-load" class="pw">137.5</span><small class="wu">kg</small></div>
+            <div style="text-align:right;font-size:12.5px;color:var(--ph-muted)">Target <b style="color:var(--ph-ink)">0.49–0.55 m/s</b><br>Stop at <b style="color:var(--ph-ink)">20% loss</b></div>
+          </div>
+          <div class="kv"><span>Sets</span><b id="pl-sets">4</b></div>
+          <div class="kv"><span>Reps</span><b>Up to 6 per set · 20 total</b></div>
+          <div class="sub" id="pl-note">The target speed stays the same on every day. On a good day you reach it with more weight.</div>
+        </div>
+        <div class="card">
+          <div class="label">Accessories</div>
+          <div id="acc-list">
+            <div class="acc" data-sets="3"><b>Bulgarian split squat</b><span class="r"><span class="as">3</span> × 8–10</span><span>Last time 10, 10, 9</span><span class="r"><span class="w" data-kg="24">24</span> <span class="wu">kg</span> DBs</span></div>
+            <div class="acc" data-sets="3"><b>Romanian deadlift</b><span class="r"><span class="as">3</span> × 6–10</span><span>Hit 10 on every set: +1 step</span><span class="r"><span class="w" data-kg="102.5">102.5</span> <span class="wu">kg</span></span></div>
+          </div>
+        </div>
+        <button class="btn">Start back squat</button>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>8. Today's plan</b><span>Warm up with 1–2 lighter sets up to 60%. That set is compared with your profile, and today's load and sets adjust using the readiness table.</span></figcaption>
+  </figure>
+
+  <!-- 9. Between sets -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>7:31</span><span>Set 2 of 4</span></div>
+      <div class="screen">
+        <div class="title"><h2>Set 2 done</h2><small>Back squat · <span class="w" data-kg="137.5">137.5</span> <span class="wu">kg</span></small></div>
+        <div class="tiles">
+          <div class="card"><div class="label">First rep</div><div class="big num">0.59<small>m/s</small></div></div>
+          <div class="card"><div class="label">Loss at stop</div><div class="big num">19<small>%</small></div></div>
+        </div>
+        <div class="card">
+          <div class="label">Target zone</div>
+          <svg viewBox="0 0 280 46" role="img" aria-label="First rep at 0.59 m/s, above the 0.49 to 0.55 target zone" style="width:100%;height:auto">
+            <rect x="10" y="18" width="260" height="10" rx="5" fill="#0f141a" stroke="#2a3542"/>
+            <rect x="108" y="18" width="78" height="10" fill="rgba(63,191,127,.35)"/>
+            <text x="108" y="44" font-size="10" fill="#8b98a7" text-anchor="middle">0.49</text>
+            <text x="186" y="44" font-size="10" fill="#8b98a7" text-anchor="middle">0.55</text>
+            <circle cx="238" cy="23" r="6" fill="#5b9bff"/>
+            <text x="238" y="11" font-size="11" fill="#eef2f6" text-anchor="middle" font-weight="600">0.59</text>
+          </svg>
+        </div>
+        <div class="card" style="border-color:rgba(91,155,255,.5)">
+          <div class="row spread"><b style="font-size:14px">Next set: <span class="w" data-kg="140">140</span> <span class="wu">kg</span></b><span class="pill good">+1 step</span></div>
+          <div class="sub">Your first rep was faster than the target, so you're stronger than the profile expects. Today's changes stay within about 5% of plan (<span class="w" data-kg="130">130</span>–<span class="w" data-kg="145">145</span> <span class="wu">kg</span>).</div>
+          <div class="actions" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="btn ghost small">Keep <span class="w" data-kg="137.5">137.5</span></button>
+            <button class="btn small">Use <span class="w" data-kg="140">140</span></button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row spread"><div class="label">Reps today</div><b class="num">10 of 20</b></div>
+          <div class="progress"><i style="width:50%"></i></div>
+          <div class="list">
+            <div class="item"><b>Set 1 · <span class="w" data-kg="137.5">137.5</span> <span class="wu">kg</span> × 5</b><span class="pill good">In zone</span><span>First rep 0.56 · stopped at 18% loss</span></div>
+            <div class="item"><b>Set 2 · <span class="w" data-kg="137.5">137.5</span> <span class="wu">kg</span> × 5</b><span class="pill idle" style="color:var(--ph-accent);background:rgba(91,155,255,.16)">Fast</span><span>First rep 0.59 · stopped at 19% loss</span></div>
+          </div>
+        </div>
+        <div class="kv sub"><span>Rest</span><b style="color:var(--ph-ink)">2:41 of 3–5 min</b></div>
+      </div>
+    </div>
+    <figcaption><b>9. Between sets</b><span>Each set ends at the velocity-loss cutoff. The first rep's speed sets the next load, one step at a time. The total-rep cap ends the exercise.</span></figcaption>
+  </figure>
+
+  <!-- 10. Deload and retest prompts -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>6:58</span><span>Program</span></div>
+      <div class="screen">
+        <div class="title"><h2>Program</h2><small>Suggestions</small></div>
+        <div class="banner warn">
+          <b>Deload suggested</b>
+          <span>Readiness read <b>Down</b> on Monday and Wednesday. Your next 2 sessions become deload sessions: 70–75%, stop at 10% loss, 2–3 sets.</span>
+          <span>Then week 4 resumes. If both deload sessions read Normal or better, you'll skip ahead to stay on schedule.</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+            <button class="btn ghost small">Keep plan</button>
+            <button class="btn small">Start deload</button>
+          </div>
+        </div>
+        <div class="banner info">
+          <b>Your profile may be out of date</b>
+          <span>Over the last 3 squat sessions your working sets ran 0.07 m/s faster than predicted, which suggests a 1RM about 6% higher than <span class="w" data-kg="170">170</span> <span class="wu">kg</span>.</span>
+          <button class="btn ghost small" style="margin-top:4px">Add a profile test to next session</button>
+        </div>
+        <div class="card">
+          <div class="label">End of block</div>
+          <div class="list">
+            <div class="day"><span class="dow">Wk 6</span><b>Deload week</b><span class="pill idle">Planned</span><span>70–75% · 10% loss · 2–3 sets</span></div>
+            <div class="day"><span class="dow">Fri</span><b>Profile test</b><span class="pill warn">Prompted</span><span>Ramp of 4–6 loads, optional heavy single</span></div>
+            <div class="day"><span class="dow">Next</span><b>Block 3 · Peaking</b><span class="pill idle">Auto</span><span>Loads come from the new 1RM</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="label">After the test</div>
+          <div class="kv"><span>Estimated 1RM</span><b><span class="w" data-kg="170">170</span> <span class="wu">kg</span> → <span class="w" data-kg="180">180</span> <span class="wu">kg</span></b></div>
+          <div class="kv"><span>Your 1RM velocity</span><b>0.26 m/s (unchanged)</b></div>
+          <div class="sub">The new 1RM replaces the old one for the next block. Working sets never change it.</div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>10. Deloads and retests</b><span>Two Down sessions in a row suggest a deload. Every block ends with a deload and a prompted profile test. Drifting working sets can suggest an early retest.</span></figcaption>
+  </figure>
+
+  <!-- 11. Block builder -->
+  <figure>
+    <div class="phone">
+      <div class="status"><span>8:10</span><span>Program</span></div>
+      <div class="screen">
+        <div class="title"><h2>New block</h2><small>Draft values from the spec</small></div>
+        <div class="card">
+          <div class="label">Main goal</div>
+          <div class="sw" role="group" aria-label="Block goal" id="bb-goal">
+            <button class="chip" aria-pressed="true" data-g="strength">Max strength</button>
+            <button class="chip" aria-pressed="false" data-g="hypertrophy">Hypertrophy</button>
+            <button class="chip" aria-pressed="false" data-g="power">Power</button>
+            <button class="chip" aria-pressed="false" data-g="peaking">Peaking</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row spread">
+            <div><b style="font-size:14px">Length</b><div class="sub">Last week is the deload</div></div>
+            <div class="stepper sm" style="width:130px"><button id="bb-minus" aria-label="Shorter block">−</button><b id="bb-len">6 wk</b><button id="bb-plus" aria-label="Longer block">+</button></div>
+          </div>
+          <div class="row spread">
+            <div><b style="font-size:14px">Lifter</b><div class="sub" id="bb-lvl-note">Starts at 74–76%</div></div>
+            <div class="seg" role="group" aria-label="Training level" style="width:150px">
+              <button id="bb-most" aria-pressed="true">Most</button>
+              <button id="bb-trained" aria-pressed="false">Well trained</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="label">Weeks</div>
+          <table class="mini">
+            <thead><tr><th>Wk</th><th>%1RM</th><th>Loss</th><th>Sets</th><th>Note</th></tr></thead>
+            <tbody id="bb-weeks"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="label">Rules</div>
+          <div class="kv"><span>Deload early</span><b>2 Down sessions in a row</b></div>
+          <div class="kv"><span>Retest</span><b>End of block</b></div>
+          <div class="kv"><span>Rep cap per exercise</span><b id="bb-cap">15–25</b></div>
+          <div class="kv"><span>Accessories</span><b id="bb-acc">2–3 · 3 × 6–10</b></div>
+        </div>
+        <button class="btn">Save block</button>
+      </div>
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h3l3-7 4 14 3-7h3"/></svg>Today</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>History</button>
+        <button class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h3"/></svg>Program</button>
+        <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Settings</button>
+      </nav>
+    </div>
+    <figcaption><b>11. Block builder</b><span>Pick a goal and length, and the weeks fill in from your goal templates. Every cell stays editable.</span></figcaption>
+  </figure>
+</main>
+
+<section class="notes">
+  <div><h3>What's real so far</h3><p>The measurement behind screens 2 and 3 exists as the prototype in the repository. The screens themselves are a design to react to.</p></div>
+  <div><h3>Other equipment</h3><p>When no plate is in view, the setup screen would switch to body tracking for dumbbells, kettlebells and bodyweight work, starting with rep counting.</p></div>
+  <div><h3>Program numbers</h3><p>Screens 7–11 use the draft values from the programming spec and an example profile: estimated 1RM 170 kg, mean velocity = 1.62 − 0.008 × load. They change when you edit the spec.</p></div>
+</section>
+
+<script>
+(function () {
+  // Session: exercise chips update the next-set card.
+  var modes = { "Back squat": "Plate tracking", "Romanian deadlift": "Plate tracking", "Weighted pull-up": "Body tracking", "KB swing": "Body tracking", "New exercise": "Choose type" };
+  var exChips = document.querySelectorAll('[aria-label="Switch exercise"] .chip');
+  exChips.forEach(function (c) {
+    c.addEventListener("click", function () {
+      exChips.forEach(function (o) { o.setAttribute("aria-pressed", o === c ? "true" : "false"); });
+      document.getElementById("next-ex").textContent = c.dataset.ex;
+      var w = document.querySelector("#next-load .w");
+      w.dataset.kg = c.dataset.load;
+      renderWeights();
+      document.getElementById("next-mode").textContent = modes[c.dataset.ex];
+    });
+  });
+
+  // Units: every weight is stored in kg and shown in the chosen unit.
+  var LB_PER_KG = 2.20462;
+  var unit = "kg";
+  function toUnit(kg) { return unit === "kg" ? kg : kg * LB_PER_KG; }
+  function fmtW(kg) {
+    var v = toUnit(kg);
+    v = unit === "kg" ? Math.round(v * 10) / 10 : Math.round(v * 2) / 2;
+    return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  }
+  function renderWeights() {
+    document.querySelectorAll(".w").forEach(function (e) { e.textContent = fmtW(parseFloat(e.dataset.kg)); });
+    document.querySelectorAll(".wu").forEach(function (e) { e.textContent = unit; });
+    var step = unit === "kg" ? "2.5 kg" : "5 lb";
+    document.getElementById("step-label").textContent = step;
+    document.getElementById("step-setting").textContent = step;
+    showLoad();
+    if (window.drawLv) window.drawLv();
+    if (window.renderProgram) window.renderProgram();
+  }
+  window.vbt = { fmtW: fmtW, unit: function () { return unit; }, LB_PER_KG: LB_PER_KG };
+
+  // Setup: set type.
+  document.querySelectorAll(".settype").forEach(function (c) {
+    c.addEventListener("click", function () {
+      document.querySelectorAll(".settype").forEach(function (o) { o.setAttribute("aria-pressed", o === c ? "true" : "false"); });
+    });
+  });
+
+  // Setup: load stepper and typed load, in the chosen unit.
+  var loadKg = 110;
+  var loadInput = document.getElementById("load");
+  function stepKg() { return unit === "kg" ? 2.5 : 5 / LB_PER_KG; }
+  // Size the field to its text so a value like 242.5 is never cut off.
+  function fitLoad() {
+    loadInput.style.width = "0px";
+    loadInput.style.width = (loadInput.scrollWidth + 4) + "px";
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLoad);
+  function showLoad() { loadInput.value = fmtW(loadKg).replace(/,/g, ""); fitLoad(); }
+  loadInput.addEventListener("input", fitLoad);
+  loadInput.addEventListener("focus", function () { loadInput.select(); });
+  loadInput.addEventListener("change", function () {
+    var v = parseFloat(loadInput.value.replace(",", "."));
+    if (!isNaN(v) && v >= 0) loadKg = unit === "kg" ? v : v / LB_PER_KG;
+    showLoad();
+  });
+  loadInput.addEventListener("keydown", function (e) { if (e.key === "Enter") loadInput.blur(); });
+  document.getElementById("plus").addEventListener("click", function () { loadKg += stepKg(); showLoad(); });
+  document.getElementById("minus").addEventListener("click", function () { loadKg = Math.max(0, loadKg - stepKg()); showLoad(); });
+
+  var ukg = document.getElementById("u-kg"), ulb = document.getElementById("u-lb");
+  function setUnit(u) {
+    unit = u;
+    ukg.setAttribute("aria-pressed", u === "kg" ? "true" : "false");
+    ulb.setAttribute("aria-pressed", u === "lb" ? "true" : "false");
+    renderWeights();
+  }
+  ukg.addEventListener("click", function () { setUnit("kg"); });
+  ulb.addEventListener("click", function () { setUnit("lb"); });
+
+  // Results: example reps. Power is approximated from velocity for the mockup only.
+  var reps = [
+    { mv: 0.78, pv: 1.40, up: 0.56, down: 0.56 },
+    { mv: 0.76, pv: 1.37, up: 0.56, down: 0.56 },
+    { mv: 0.73, pv: 1.31, up: 0.55, down: 0.56 },
+    { mv: 0.70, pv: 1.26, up: 0.55, down: 0.55 },
+    { mv: 0.66, pv: 1.19, up: 0.55, down: 0.55 }
+  ].map(function (r) { r.base = { mv: r.mv, pv: r.pv, up: r.up }; r.a = 0; r.b = 1; r.deleted = false; return r; });
+
+  // Each example rep follows a smooth (minimum-jerk) velocity curve; trimming its
+  // start or end changes the counted displacement and time, and so its metrics.
+  function sPos(t) { return 10 * t * t * t - 15 * Math.pow(t, 4) + 6 * Math.pow(t, 5); }
+  function vShape(t) { return 30 * t * t - 60 * t * t * t + 30 * Math.pow(t, 4); }
+  function trimmed(r, a, b) {
+    var frac = sPos(b) - sPos(a);
+    var peakT = Math.min(Math.max(0.5, a), b);
+    return { mv: r.base.mv * frac / (b - a), pv: r.base.pv * vShape(peakT) / 1.875, up: r.base.up * frac };
+  }
+
+  var lo = 0.65, hi = 0.80, view = "mean", mass = 110;
+  var bars = document.getElementById("bars");
+  function live() { return reps.filter(function (r) { return !r.deleted; }); }
+
+  function renderBars() {
+    var key = view === "peak" ? "pv" : "mv";
+    var vmax = view === "peak" ? 1.6 : 0.9;
+    bars.innerHTML = "";
+    if (view === "mean") {
+      var zone = document.createElement("div");
+      zone.className = "zone";
+      zone.style.bottom = (lo / vmax * 100) + "%";
+      zone.style.height = ((hi - lo) / vmax * 100) + "%";
+      zone.innerHTML = "<span>target</span>";
+      bars.appendChild(zone);
+    }
+    reps.forEach(function (r) {
+      var v = r[key];
+      var b = document.createElement("div");
+      b.className = "bar" + (r.deleted ? " off" : "");
+      b.style.height = (v / vmax * 100) + "%";
+      b.style.background = view === "peak" ? "var(--ph-accent)" : (v > hi ? "var(--ph-accent)" : (v >= lo ? "var(--good)" : "var(--warn)"));
+      b.innerHTML = "<em>" + v.toFixed(2) + "</em>";
+      bars.appendChild(b);
+    });
+    document.getElementById("vel-label").textContent = (view === "peak" ? "Peak" : "Mean") + " by rep";
+    var pill = document.getElementById("zone-pill");
+    var inZone = live().filter(function (r) { return r.mv >= lo && r.mv <= hi; }).length;
+    if (view === "peak") {
+      document.getElementById("zone-note").textContent = "For review; targets use mean velocity";
+      pill.style.display = "none";
+    } else {
+      document.getElementById("zone-note").textContent = "Target 0.65–0.80 m/s";
+      pill.style.display = "";
+      pill.textContent = inZone === live().length ? "All reps in zone" : inZone + " of " + live().length + " in zone";
+      pill.className = "pill " + (inZone === live().length ? "good" : "warn");
+    }
+  }
+
+  function renderSummary() {
+    var l = live();
+    var mvs = l.map(function (r) { return r.mv; }), pvs = l.map(function (r) { return r.pv; });
+    document.getElementById("rep-count").textContent = l.length;
+    document.getElementById("set-mv").textContent = l.length ? (mvs.reduce(function (x, y) { return x + y; }, 0) / l.length).toFixed(2) : "–";
+    document.getElementById("set-pv").textContent = l.length ? Math.max.apply(null, pvs).toFixed(2) : "–";
+    // Velocity loss always uses mean velocity: best rep to last counted rep.
+    var loss = 0;
+    if (l.length) { var best = Math.max.apply(null, mvs); loss = (best - mvs[mvs.length - 1]) / best * 100; }
+    document.getElementById("loss-val").textContent = Math.round(loss) + "%";
+    document.getElementById("loss-bar").style.width = Math.min(loss, 25) / 25 * 100 + "%";
+  }
+
+  function renderReps() {
+    document.getElementById("reps").innerHTML = reps.map(function (r, i) {
+      var mp = Math.round(mass * 9.81 * r.mv * 1.04), pp = Math.round(mass * 9.81 * r.pv * 1.22);
+      var cls = (r.deleted ? "deleted" : "") + (r.a > 0 || r.b < 1 ? " adjusted" : "");
+      return "<tr tabindex=\"0\" data-i=\"" + i + "\" class=\"" + cls + "\" aria-label=\"Rep " + (i + 1) + ", tap to adjust or delete\"><td>" + (i + 1) + "</td><td>" + r.mv.toFixed(2) + "</td><td>" + r.pv.toFixed(2) + "</td><td>" + mp.toLocaleString() + "</td><td>" + pp.toLocaleString() + "</td><td>" + r.up.toFixed(2) + "</td><td>" + r.down.toFixed(2) + "</td></tr>";
+    }).join("");
+  }
+  function renderAll() { renderBars(); renderSummary(); renderReps(); }
+
+  var vm = document.getElementById("v-mean"), vp = document.getElementById("v-peak");
+  vm.addEventListener("click", function () { vm.setAttribute("aria-pressed", "true"); vp.setAttribute("aria-pressed", "false"); view = "mean"; renderBars(); });
+  vp.addEventListener("click", function () { vp.setAttribute("aria-pressed", "true"); vm.setAttribute("aria-pressed", "false"); view = "peak"; renderBars(); });
+
+  var BAR = 110, SYS = 110 + 85 * 0.8;
+  var pb = document.getElementById("pw-bar"), ps = document.getElementById("pw-sys");
+  pb.addEventListener("click", function () { pb.setAttribute("aria-pressed", "true"); ps.setAttribute("aria-pressed", "false"); mass = BAR; renderReps(); });
+  ps.addEventListener("click", function () { ps.setAttribute("aria-pressed", "true"); pb.setAttribute("aria-pressed", "false"); mass = SYS; renderReps(); });
+
+  // Rep sheet: adjust start and end, or delete.
+  var sheet = document.getElementById("sheet"), trace = document.getElementById("sheet-trace");
+  var ts = document.getElementById("trim-start"), te = document.getElementById("trim-end");
+  var current = null, lastFocus = null;
+  function drawSheet() {
+    var r = reps[current], a = ts.value / 100, b = te.value / 100, m = trimmed(r, a, b);
+    document.getElementById("sh-mv").textContent = m.mv.toFixed(2);
+    document.getElementById("sh-pv").textContent = m.pv.toFixed(2);
+    document.getElementById("sh-up").textContent = m.up.toFixed(2);
+    var W = 280, H = 90, pad = 8, pts = [], area = [];
+    for (var k = 0; k <= 60; k++) {
+      var t = k / 60, x = pad + t * (W - 2 * pad), y = H - pad - vShape(t) / 1.875 * (H - 2 * pad);
+      pts.push(x + "," + y);
+      if (t >= a && t <= b) area.push(x + "," + y);
+    }
+    var xa = pad + a * (W - 2 * pad), xb = pad + b * (W - 2 * pad), base = H - pad;
+    trace.innerHTML = '<polygon points="' + xa + ',' + base + ' ' + area.join(" ") + ' ' + xb + ',' + base + '" fill="rgba(91,155,255,.25)"/>' +
+      '<polyline points="' + pts.join(" ") + '" fill="none" stroke="#5b9bff" stroke-width="2"/>' +
+      '<line x1="' + xa + '" x2="' + xa + '" y1="4" y2="' + base + '" stroke="#eef2f6" stroke-width="1.5"/>' +
+      '<line x1="' + xb + '" x2="' + xb + '" y1="4" y2="' + base + '" stroke="#eef2f6" stroke-width="1.5"/>';
+  }
+  function openSheet(i) {
+    current = i; lastFocus = document.activeElement;
+    var r = reps[i];
+    document.getElementById("sheet-title").textContent = "Rep " + (i + 1) + (r.deleted ? " (deleted)" : "");
+    ts.value = Math.round(r.a * 100); te.value = Math.round(r.b * 100);
+    document.getElementById("sheet-delete").textContent = r.deleted ? "Restore rep" : "Delete rep";
+    drawSheet();
+    sheet.classList.add("open");
+    ts.focus();
+  }
+  function closeSheet() { sheet.classList.remove("open"); if (lastFocus) lastFocus.focus(); }
+  ts.addEventListener("input", drawSheet);
+  te.addEventListener("input", drawSheet);
+  document.getElementById("sheet-close").addEventListener("click", closeSheet);
+  sheet.addEventListener("click", function (e) { if (e.target === sheet) closeSheet(); });
+  sheet.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
+  document.getElementById("sheet-save").addEventListener("click", function () {
+    var r = reps[current], a = ts.value / 100, b = te.value / 100, m = trimmed(r, a, b);
+    r.a = a; r.b = b; r.mv = m.mv; r.pv = m.pv; r.up = m.up;
+    renderAll(); closeSheet();
+  });
+  document.getElementById("sheet-delete").addEventListener("click", function () {
+    reps[current].deleted = !reps[current].deleted;
+    renderAll(); closeSheet();
+  });
+  var tbody = document.getElementById("reps");
+  tbody.addEventListener("click", function (e) { var tr = e.target.closest("tr"); if (tr) openSheet(+tr.dataset.i); });
+  tbody.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { var tr = e.target.closest("tr"); if (tr) { e.preventDefault(); openSheet(+tr.dataset.i); } } });
+
+  renderAll();
+
+  // History charts, drawn as SVG.
+  var NS = "http://www.w3.org/2000/svg";
+  function el(svg, name, attrs, text) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    svg.appendChild(e);
+    return e;
+  }
+  function axes(svg, x0, x1, y0, y1, yTicks, fmt, sx, sy) {
+    yTicks.forEach(function (t) {
+      el(svg, "line", { x1: x0, x2: x1, y1: sy(t), y2: sy(t), stroke: "#2a3542", "stroke-width": 1 });
+      el(svg, "text", { x: x0 - 4, y: sy(t) + 3, "text-anchor": "end" }, fmt(t));
+    });
+  }
+
+  var trend = document.getElementById("trend");
+  var vals = [0.82, 0.84, 0.81, 0.86, 0.85, 0.88, 0.87, 0.90];
+  var X0 = 34, X1 = 272, Y0 = 118, Y1 = 10;
+  var sx = function (i) { return X0 + i * (X1 - X0) / (vals.length - 1); };
+  var sy = function (v) { return Y0 - (v - 0.78) / (0.92 - 0.78) * (Y0 - Y1); };
+  axes(trend, X0, X1, Y0, Y1, [0.80, 0.85, 0.90], function (t) { return t.toFixed(2); }, sx, sy);
+  var pts = vals.map(function (v, i) { return sx(i) + "," + sy(v); }).join(" ");
+  el(trend, "polygon", { points: X0 + "," + Y0 + " " + pts + " " + X1 + "," + Y0, fill: "rgba(91,155,255,.14)" });
+  el(trend, "polyline", { points: pts, fill: "none", stroke: "#5b9bff", "stroke-width": 2 });
+  vals.forEach(function (v, i) { el(trend, "circle", { cx: sx(i), cy: sy(v), r: i === vals.length - 1 ? 4 : 2.2, fill: "#5b9bff" }); });
+  el(trend, "text", { x: sx(7) - 6, y: sy(0.90) - 8, "text-anchor": "end", style: "fill:#eef2f6;font-weight:600" }, "0.90");
+  el(trend, "text", { x: X0, y: 134 }, "Sep 26");
+  el(trend, "text", { x: X1, y: 134, "text-anchor": "end" }, "Oct 31");
+
+  var lv = document.getElementById("lv");
+  var lvPts = [[60, 1.12], [80, 0.98], [100, 0.86], [120, 0.66], [140, 0.48]];
+  var lsx = function (kg) { return X0 + (kg - 50) / (180 - 50) * (X1 - X0); };
+  var lsy = function (v) { return Y0 - (v - 0.2) / (1.2 - 0.2) * (Y0 - Y1); };
+  axes(lv, X0, X1, Y0, Y1, [0.4, 0.8, 1.2], function (t) { return t.toFixed(1); }, lsx, lsy);
+  // Least-squares line through the points, extended to the 1RM velocity of 0.30 m/s.
+  var n = lvPts.length, mx = 0, my = 0, sxy = 0, sxx = 0;
+  lvPts.forEach(function (p) { mx += p[0] / n; my += p[1] / n; });
+  lvPts.forEach(function (p) { sxy += (p[0] - mx) * (p[1] - my); sxx += (p[0] - mx) * (p[0] - mx); });
+  var MVT = 0.26;
+  var slope = sxy / sxx, icpt = my - slope * mx, oneRm = (MVT - icpt) / slope;
+  el(lv, "line", { x1: lsx(55), y1: lsy(icpt + slope * 55), x2: lsx(oneRm), y2: lsy(MVT), stroke: "#5b9bff", "stroke-width": 1.5, "stroke-dasharray": "4 3" });
+  el(lv, "line", { x1: X0, x2: X1, y1: lsy(MVT), y2: lsy(MVT), stroke: "#ef5a5a", "stroke-width": 1, "stroke-dasharray": "2 3" });
+  el(lv, "text", { x: X0 + 2, y: lsy(MVT) - 4, style: "fill:#ef5a5a" }, "Your 1RM velocity 0.26");
+  lvPts.forEach(function (p) { el(lv, "circle", { cx: lsx(p[0]), cy: lsy(p[1]), r: 3, fill: "#5b9bff" }); });
+  el(lv, "circle", { cx: lsx(oneRm), cy: lsy(MVT), r: 4, fill: "none", stroke: "#eef2f6", "stroke-width": 1.5 });
+  var lvLabels = [60, 100, 140].map(function (kg) { return el(lv, "text", { x: lsx(kg), y: 134, "text-anchor": "middle" }, ""); });
+  window.drawLv = function () { lvLabels.forEach(function (t, i) { t.textContent = fmtW([60, 100, 140][i]) + " " + unit; }); };
+  window.drawLv();
+})();
+</script>
+
+<script>
+(function () {
+  var V = window.vbt;
+  // Example profile from the spec: MV = 1.62 - 0.008 x load, estimated 1RM 170 kg.
+  var E1RM = 170, PLAN_PCT = 0.81;
+  function roundLoad(kg) {
+    if (V.unit() === "kg") return Math.round(kg / 2.5) * 2.5;
+    return Math.round(kg * V.LB_PER_KG / 5) * 5 / V.LB_PER_KG;
+  }
+  // Readiness table from the spec (draft values).
+  function reading(d) {
+    if (d >= 0.06) return { name: "Very good", cls: "good", pct: 5, sets: 0, acc: 0 };
+    if (d >= 0.03) return { name: "Good", cls: "good", pct: 2.5, sets: 0, acc: 0 };
+    if (d > -0.03) return { name: "Normal", cls: "good", pct: 0, sets: 0, acc: 0 };
+    if (d > -0.06) return { name: "Slightly down", cls: "warn", pct: -2.5, sets: 0, acc: 0 };
+    if (d > -0.10) return { name: "Down", cls: "warn", pct: -5, sets: -1, acc: -1 };
+    return { name: "Well down", cls: "bad", pct: -10, sets: 0, acc: -99 };
+  }
+  var delta = 0;
+  var chips = document.querySelectorAll("#rd-chips .chip");
+  chips.forEach(function (c) {
+    c.addEventListener("click", function () {
+      chips.forEach(function (o) { o.setAttribute("aria-pressed", o === c ? "true" : "false"); });
+      delta = parseFloat(c.dataset.d);
+      renderToday();
+    });
+  });
+  function renderToday() {
+    var r = reading(delta);
+    document.getElementById("rd-mv").textContent = (0.80 + delta).toFixed(2);
+    document.getElementById("rd-delta").textContent = delta === 0 ? "±0.00" : (delta > 0 ? "+" : "−") + Math.abs(delta).toFixed(2);
+    var pill = document.getElementById("rd-pill");
+    pill.textContent = r.name; pill.className = "pill " + r.cls;
+    var kg = roundLoad(E1RM * PLAN_PCT * (1 + r.pct / 100));
+    var el = document.getElementById("pl-load");
+    el.dataset.kg = kg; el.textContent = V.fmtW(kg);
+    document.getElementById("pl-sets").textContent = 4 + r.sets;
+    var parts = [];
+    if (r.pct) parts.push((r.pct > 0 ? "+" : "−") + Math.abs(r.pct) + "% load");
+    if (r.sets) parts.push("1 set fewer");
+    if (r.acc === -1) parts.push("1 set fewer per accessory");
+    document.getElementById("rd-adj").textContent = parts.length ? "Today: " + parts.join(", ") : "No change to today's plan";
+    document.getElementById("rd-banner").hidden = r.name !== "Well down";
+    document.querySelectorAll("#acc-list .acc").forEach(function (a) {
+      var n = +a.dataset.sets;
+      a.classList.toggle("cut", r.acc === -99);
+      a.querySelector(".as").textContent = r.acc === -1 ? n - 1 : n;
+    });
+  }
+
+  // Block builder. Draft templates: start and top of the loading weeks, then a deload week.
+  var goals = {
+    strength:    { lo: 75, hi: 87, trainedLo: 81, w: 2, loss: ["20%", "20%", "15%"], sets: "4", cap: "15–25", acc: "2–3 · 3 × 6–10", dl: ["70–75%", "10%", "2–3"] },
+    hypertrophy: { lo: 66, hi: 76, trainedLo: 70, w: 2, loss: ["30%", "30%", "25%"], sets: "4–5", cap: "30–50", acc: "3–4 · 3–4 × 8–15", dl: ["60–65%", "15%", "2–3"] },
+    power:       { lo: 35, hi: 55, trainedLo: 40, w: 10, loss: ["10%", "10%", "10%"], sets: "5–6", cap: "18–30", acc: "1–2 + jumps or throws", dl: ["30–40%", "5%", "3"] },
+    peaking:     { lo: 88, hi: 94, trainedLo: 90, w: 2, loss: ["10%", "5–10%", "5%"], sets: "2–4", cap: "6–10", acc: "1–2 light", dl: ["60–70%", "5%", "2"] }
+  };
+  var goal = "strength", len = 6, trained = false;
+  function renderBlock() {
+    var g = goals[goal], lo = trained ? g.trainedLo : g.lo, n = len - 1, rows = [];
+    for (var i = 0; i < n; i++) {
+      var a = Math.round(lo + (g.hi - lo) * (n === 1 ? 1 : i / (n - 1)));
+      var loss = g.loss[Math.min(2, Math.floor(i * 3 / n))];
+      var note = i === 0 ? "Start" : (i === n - 1 ? "Highest stress" : "");
+      rows.push("<tr><td>" + (i + 1) + "</td><td>" + a + "–" + (a + g.w) + "%</td><td>" + loss + "</td><td>" + g.sets + "</td><td>" + note + "</td></tr>");
+    }
+    rows.push("<tr class='dl'><td>" + len + "</td><td>" + g.dl[0] + "</td><td>" + g.dl[1] + "</td><td>" + g.dl[2] + "</td><td>Deload + retest</td></tr>");
+    document.getElementById("bb-weeks").innerHTML = rows.join("");
+    document.getElementById("bb-len").textContent = len + " wk";
+    document.getElementById("bb-lvl-note").textContent = "Starts at " + lo + "–" + (lo + g.w) + "%";
+    document.getElementById("bb-cap").textContent = g.cap;
+    document.getElementById("bb-acc").textContent = g.acc;
+  }
+  var gch = document.querySelectorAll("#bb-goal .chip");
+  gch.forEach(function (c) {
+    c.addEventListener("click", function () {
+      gch.forEach(function (o) { o.setAttribute("aria-pressed", o === c ? "true" : "false"); });
+      goal = c.dataset.g;
+      len = goal === "peaking" ? 4 : 6;
+      renderBlock();
+    });
+  });
+  document.getElementById("bb-minus").addEventListener("click", function () { len = Math.max(3, len - 1); renderBlock(); });
+  document.getElementById("bb-plus").addEventListener("click", function () { len = Math.min(10, len + 1); renderBlock(); });
+  var most = document.getElementById("bb-most"), tr = document.getElementById("bb-trained");
+  most.addEventListener("click", function () { trained = false; most.setAttribute("aria-pressed", "true"); tr.setAttribute("aria-pressed", "false"); renderBlock(); });
+  tr.addEventListener("click", function () { trained = true; tr.setAttribute("aria-pressed", "true"); most.setAttribute("aria-pressed", "false"); renderBlock(); });
+
+  window.renderProgram = renderToday;
+  renderToday();
+  renderBlock();
+})();
+</script>
+</body>
+</html>

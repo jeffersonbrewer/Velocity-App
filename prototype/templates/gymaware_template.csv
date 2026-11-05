@@ -1,0 +1,3 @@
+video,exercise,load_kg,rep,ga_mean_velocity,ga_peak_velocity,ga_mean_power,ga_peak_power,ga_distance,notes
+squat_100kg_set1.mov,squat,100,1,0.62,1.10,640,1450,0.55,example row - replace with your data
+squat_100kg_set1.mov,squat,100,2,0.60,1.07,615,1390,0.55,
