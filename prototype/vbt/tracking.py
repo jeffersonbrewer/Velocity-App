@@ -54,8 +54,14 @@ def detect_plate(gray: np.ndarray, min_frac: float = 0.05, max_frac: float = 0.4
     )
     if circles is None:
         return None
-    candidates = circles[0][:3]
-    x, y, r = max(candidates, key=lambda c: c[2])
+    # Start from the strongest vote. Hough also returns large false circles made of
+    # unrelated straight edges (door panels, legs), so a larger candidate only wins when it
+    # is concentric with the strongest one, i.e. it is the plate rim around the hub.
+    cands = circles[0][:6]
+    x, y, r = cands[0]
+    for cx, cy, cr in cands[1:]:
+        if cr > r and np.hypot(cx - x, cy - y) < 0.2 * cr:
+            x, y, r = cx, cy, cr
     return refine_circle(gray, float(x), float(y), float(r)) or Circle(float(x), float(y), float(r))
 
 
@@ -149,6 +155,8 @@ def track_video(path: str, fps: float | None = None, min_score: float = 0.5) -> 
     xs, ys, rs, rounds = [], [], [], []
     template = None
     prev: Circle | None = None
+    misses = 0
+    ref_r: float | None = None  # plate radius from the first detection; the plate never changes size
     while True:
         ok, frame = cap.read()
         if not ok:
@@ -157,20 +165,27 @@ def track_video(path: str, fps: float | None = None, min_score: float = 0.5) -> 
         circle = None
         if prev is None:
             circle = detect_plate(gray)
-            if circle is not None:
+            if circle is not None and ref_r is not None and abs(circle.r - ref_r) > 0.12 * ref_r:
+                circle = None  # re-detection found something else (the hub ring, a stray circle)
+            if circle is not None and ref_r is None:
+                ref_r = circle.r
                 half = int(round(circle.r * 1.05))
                 x0, y0 = int(round(circle.x)) - half, int(round(circle.y)) - half
                 if x0 >= 0 and y0 >= 0 and x0 + 2 * half < gray.shape[1] and y0 + 2 * half < gray.shape[0]:
                     template = (gray[y0:y0 + 2 * half, x0:x0 + 2 * half].copy(), half)
         else:
-            circle = _track_step(gray, prev, template, min_score)
+            circle = _track_step(gray, prev, template, min_score, ref_r)
 
         if circle is None:
             xs.append(np.nan); ys.append(np.nan); rs.append(np.nan)
-            # After losing the plate, search the whole frame again on the next frame.
-            prev = None if template is None else prev
+            # After losing the plate for a few frames, search the whole frame again: the last
+            # accepted circle may be slightly off, and searching around it can fail forever.
+            misses += 1
+            if template is None or misses >= 3:
+                prev = None
         else:
             xs.append(circle.x); ys.append(circle.y); rs.append(circle.r)
+            misses = 0
             rounds.append(circle.roundness)
             prev = circle
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -189,7 +204,8 @@ def track_video(path: str, fps: float | None = None, min_score: float = 0.5) -> 
     )
 
 
-def _track_step(gray: np.ndarray, prev: Circle, template, min_score: float) -> Circle | None:
+def _track_step(gray: np.ndarray, prev: Circle, template, min_score: float,
+                ref_r: float | None = None) -> Circle | None:
     guess_x, guess_y = prev.x, prev.y
     if template is not None:
         tpl, half = template
@@ -204,10 +220,15 @@ def _track_step(gray: np.ndarray, prev: Circle, template, min_score: float) -> C
             mx, my, score = _match_subpixel(res)
             if score >= min_score:
                 guess_x, guess_y = x0 + mx + half, y0 + my + half
+    r0 = ref_r or prev.r
     circle = refine_circle(gray, guess_x, guess_y, prev.r)
     if circle is None:
         return None
     # Reject fits that jump implausibly or change size, which signal a wrong edge.
-    if abs(circle.r - prev.r) > 0.1 * prev.r or np.hypot(circle.x - guess_x, circle.y - guess_y) > 0.3 * prev.r:
+    # Check against the first detection, not the previous frame, so the fit cannot creep
+    # inward to the hub ring (about 20% smaller) a few percent at a time while a leg passes
+    # in front. 12% leaves room for the plate looking smaller higher in the frame when the
+    # camera is tilted.
+    if abs(circle.r - r0) > 0.12 * r0 or np.hypot(circle.x - guess_x, circle.y - guess_y) > 0.3 * prev.r:
         return None
     return circle

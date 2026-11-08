@@ -60,7 +60,8 @@ def lowpass(sig: np.ndarray, fps: float, cutoff_hz: float, order: int = 4) -> np
 
 
 def from_track(track: Track, plate_diameter_m: float = STANDARD_PLATE_DIAMETER_M,
-               cutoff_hz: float = 8.0, max_gap_s: float = 0.1) -> Kinematics:
+               cutoff_hz: float = 8.0, max_gap_s: float = 0.1,
+               position_scale: bool = True) -> Kinematics:
     """Scale the track to meters using the plate's known diameter, then filter and differentiate."""
     m_per_px = plate_diameter_m / (2 * track.radius_px)
     max_gap = max(1, int(round(max_gap_s * track.fps)))
@@ -75,9 +76,47 @@ def from_track(track: Track, plate_diameter_m: float = STANDARD_PLATE_DIAMETER_M
     if np.isnan(yp[first:last]).any():
         raise ValueError("Tracking was lost for longer than max_gap_s in the middle of the clip.")
     t = track.t[first:last]
-    y = -(yp[first:last] - yp[first]) * m_per_px  # image y points down; flip so up is positive
-    x = (xp[first:last] - xp[first]) * m_per_px
+    yp, xp = yp[first:last], xp[first:last]
+    fit = radius_vs_height(track.y_px, track.r_px) if position_scale else None
+    if fit is None:
+        y = -(yp - yp[0]) * m_per_px  # image y points down; flip so up is positive
+        x = (xp - xp[0]) * m_per_px
+    else:
+        # The plate's apparent size changes with height when the camera is tilted, so the
+        # meters-per-pixel scale does too. With radius r(y) = a + b*y, vertical distance is the
+        # integral of D / (2 r(y)) dy = D / (2b) * ln(r(y)).
+        a, b = fit
+        s = plate_diameter_m / (2 * b) * np.log(a + b * yp)
+        y = -(s - s[0])
+        x = (xp - xp[0]) * plate_diameter_m / (2 * (a + b * yp))
+        m_per_px = plate_diameter_m / (2 * (a + b * yp[0]))
     return from_position(t, x, y, track.fps, cutoff_hz, m_per_px)
+
+
+def radius_vs_height(y_px: np.ndarray, r_px: np.ndarray, min_span_px: float = 100.0,
+                     min_change: float = 0.01) -> tuple[float, float] | None:
+    """Robust straight-line fit of plate radius against image height, r = a + b*y.
+
+    Returns None when the plate barely moves vertically or its size does not change with
+    height by at least min_change over the travel, in which case a single scale is used.
+    """
+    ok = ~(np.isnan(y_px) | np.isnan(r_px))
+    y, r = y_px[ok], r_px[ok]
+    if len(y) < 50 or np.ptp(y) < min_span_px:
+        return None
+    keep = np.ones(len(y), bool)
+    for _ in range(4):
+        b, a = np.polyfit(y[keep], r[keep], 1)
+        resid = r - (a + b * y)
+        mad = np.median(np.abs(resid[keep])) * 1.4826 + 1e-6
+        new = np.abs(resid) < 3 * mad
+        if (new == keep).all():
+            break
+        keep = new
+    lo, hi = np.percentile(y[keep], [2, 98])
+    if abs(b) * (hi - lo) < min_change * np.median(r[keep]):
+        return None
+    return float(a), float(b)
 
 
 def from_position(t: np.ndarray, x: np.ndarray, y: np.ndarray, fps: float,
