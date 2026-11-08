@@ -8,7 +8,9 @@ Measures each rep of a set from a side-view video of the bar, using the plate fa
 2. **Track it.** Each frame, template matching finds the plate roughly, then a circle is fitted to
    its outer edge for a sub-pixel center. The edge fit ignores the plate rotating.
 3. **Scale to meters.** The plate's known diameter (450 mm by default) divided by its fitted
-   diameter in pixels gives meters per pixel.
+   diameter in pixels gives meters per pixel. If the camera is tilted, the plate looks smaller
+   higher in the frame (about 7% smaller at lockout in the first trap bar videos), so the scale is
+   fitted as a function of height and applied point by point. `--fixed-scale` turns this off.
 4. **Filter and differentiate.** A zero-lag 4th-order Butterworth low-pass (8 Hz by default)
    smooths position, then velocity and acceleration are taken by numerical differentiation.
 5. **Split reps.** Eccentric and concentric phases are stretches of downward and upward movement
@@ -51,7 +53,9 @@ Use `--exercise deadlift` (or another lift that starts from the floor) so reps a
 
 **iPhone slow-motion clips:** share the original file (AirDrop with "All Photos Data" on, or the
 Files app). Some sharing paths re-encode slow motion at 30 fps playback, which makes everything look
-8x slower. If that happens, pass the real capture rate with `--fps 240`.
+8x slower. If that happens, pass the real capture rate with `--fps 240`. Videos exported from Photos this way keep every captured
+frame but no longer record the capture rate, so `--fps` must match the camera's slo-mo setting
+(Settings > Camera > Record Slo-mo: 120 or 240). Getting it wrong scales every velocity by 2x.
 
 ## Compare with GymAware
 

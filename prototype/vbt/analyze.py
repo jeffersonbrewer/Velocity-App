@@ -30,9 +30,11 @@ def analyze_video(path: str, exercise: str, load_kg: float, *,
                   body_mass_kg: float | None = None, body_mass_fraction: float | None = None,
                   cutoff_hz: float = 8.0, fps: float | None = None,
                   velocity_loss_threshold_pct: float | None = None,
-                  target_mean_velocity: tuple[float, float] | None = None) -> Analysis:
+                  target_mean_velocity: tuple[float, float] | None = None,
+                  fixed_scale: bool = False) -> Analysis:
     track = tracking.track_video(path, fps=fps)
-    kin = kinematics.from_track(track, plate_diameter_m=plate_diameter_m, cutoff_hz=cutoff_hz)
+    kin = kinematics.from_track(track, plate_diameter_m=plate_diameter_m, cutoff_hz=cutoff_hz,
+                                position_scale=not fixed_scale)
     found = reps.segment(kin, exercise=exercise)
     # Bar power always; system power (load plus moving body mass) too when body mass is given.
     if body_mass_fraction is None:
@@ -141,13 +143,17 @@ def main(argv=None) -> None:
     p.add_argument("--max-single", action="store_true",
                    help="Tag this set as a successful 1RM single (implies --profile-test)")
     p.add_argument("--date", help="Session date, YYYY-MM-DD (default today)")
+    p.add_argument("--fixed-scale", action="store_true",
+                   help="Use one meters-per-pixel scale for the whole clip instead of correcting "
+                        "for the plate looking smaller higher in the frame (tilted camera)")
     args = p.parse_args(argv)
 
     a = analyze_video(args.video, args.exercise, args.load,
                       plate_diameter_m=args.plate_diameter, body_mass_kg=args.body_mass,
                       body_mass_fraction=args.body_mass_fraction, cutoff_hz=args.cutoff, fps=args.fps,
                       velocity_loss_threshold_pct=args.vl_threshold,
-                      target_mean_velocity=tuple(args.target) if args.target else None)
+                      target_mean_velocity=tuple(args.target) if args.target else None,
+                      fixed_scale=args.fixed_scale)
     print_report(a)
     path = save(a, Path(args.out), profile_test=args.profile_test or args.max_single,
                 max_single=args.max_single, session_date=args.date)
