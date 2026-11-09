@@ -7,3 +7,6 @@ synthetic/
 *.mov
 *.mp4
 .DS_Store
+ios/VelocityCore/.build/
+ios/**/xcuserdata/
+.DS_Store
