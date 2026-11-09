@@ -39,6 +39,11 @@ def segment(kin: Kinematics, exercise: str = "squat", v_thresh: float = 0.05,
     not split it.
     """
     up = _phases(kin, +1, v_thresh, min_rom, merge_gap_s)
+    # Drop lifts far shorter than the set's typical range of motion: a bump of the bar
+    # while setting up or a tracking glitch, not a rep.
+    if len(up) >= 3:
+        typical = float(np.median([kin.y[p.end] - kin.y[p.start] for p in up]))
+        up = [p for p in up if kin.y[p.end] - kin.y[p.start] >= 0.5 * typical]
     down = _phases(kin, -1, v_thresh, min_rom, merge_gap_s)
 
     concentric_first = exercise.lower() in CONCENTRIC_FIRST
