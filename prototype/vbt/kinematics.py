@@ -63,6 +63,7 @@ def from_track(track: Track, plate_diameter_m: float = STANDARD_PLATE_DIAMETER_M
                cutoff_hz: float = 8.0, max_gap_s: float = 0.1,
                position_scale: bool = True) -> Kinematics:
     """Scale the track to meters using the plate's known diameter, then filter and differentiate."""
+    track = resample_uniform(track)
     m_per_px = plate_diameter_m / (2 * track.radius_px)
     max_gap = max(1, int(round(max_gap_s * track.fps)))
     xp = fill_gaps(track.x_px, max_gap)
@@ -91,6 +92,32 @@ def from_track(track: Track, plate_diameter_m: float = STANDARD_PLATE_DIAMETER_M
         x = (xp - xp[0]) * plate_diameter_m / (2 * (a + b * yp))
         m_per_px = plate_diameter_m / (2 * (a + b * yp[0]))
     return from_position(t, x, y, track.fps, cutoff_hz, m_per_px)
+
+
+def resample_uniform(track: Track) -> Track:
+    """Put a variable-frame-rate track onto an even time grid, needed for filtering.
+
+    The grid rate is the clip's fastest common frame rate (240 Hz for iPhone slo-mo).
+    Grid points nearest to a lost frame stay lost.
+    """
+    dt = np.diff(track.t)
+    if len(dt) == 0 or np.ptp(dt) < 0.05 * np.median(dt):
+        return track
+    rate = float(np.round(1.0 / np.percentile(dt, 5)))
+    t = np.arange(0.0, track.t[-1] + 1e-9, 1.0 / rate)
+    lost = np.isnan(track.x_px)
+    nearest = np.clip(np.searchsorted(track.t, t), 0, len(track.t) - 1)
+    prev = np.clip(nearest - 1, 0, None)
+    gap = lost[nearest] | lost[prev]
+
+    def interp(sig):
+        good = ~np.isnan(sig)
+        out = np.interp(t, track.t[good], sig[good]) if good.sum() >= 2 else np.full(len(t), np.nan)
+        out[gap] = np.nan
+        return out
+
+    return Track(fps=rate, t=t, x_px=interp(track.x_px), y_px=interp(track.y_px),
+                 r_px=interp(track.r_px), roundness=track.roundness, frame_size=track.frame_size)
 
 
 def radius_vs_height(y_px: np.ndarray, r_px: np.ndarray, min_span_px: float = 100.0,

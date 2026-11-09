@@ -148,6 +148,7 @@ def track_video(path: str, fps: float | None = None, min_score: float = 0.5) -> 
     if not cap.isOpened():
         raise IOError(f"Could not open video: {path}")
     file_fps = cap.get(cv2.CAP_PROP_FPS)
+    fps_overridden = bool(fps)
     fps = fps or file_fps
     if not fps or fps <= 0:
         raise ValueError("Video has no frame rate; pass fps explicitly.")
@@ -157,10 +158,12 @@ def track_video(path: str, fps: float | None = None, min_score: float = 0.5) -> 
     prev: Circle | None = None
     misses = 0
     ref_r: float | None = None  # plate radius from the first detection; the plate never changes size
+    stamps = []
     while True:
         ok, frame = cap.read()
         if not ok:
             break
+        stamps.append(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame
         circle = None
         if prev is None:
@@ -197,11 +200,25 @@ def track_video(path: str, fps: float | None = None, min_score: float = 0.5) -> 
         raise ValueError(f"No frames read from {path}")
     return Track(
         fps=float(fps),
-        t=np.arange(n) / float(fps),
+        t=_frame_times(stamps, fps, fps_overridden),
         x_px=np.array(xs), y_px=np.array(ys), r_px=np.array(rs),
         roundness=float(np.median(rounds)) if rounds else float("nan"),
         frame_size=(width, height),
     )
+
+
+def _frame_times(stamps: list[float], fps: float, fps_overridden: bool) -> np.ndarray:
+    """Time of each frame in seconds.
+
+    iPhone slow-motion originals have a variable frame rate (240 fps capture with dropped
+    frames), so the file's own timestamps are used when they are valid. An explicit fps
+    override means the timestamps are known to be wrong (an exported, slowed-down copy).
+    """
+    n = len(stamps)
+    t = np.asarray(stamps, float)
+    if fps_overridden or n < 2 or not np.all(np.diff(t) > 0):
+        return np.arange(n) / float(fps)
+    return t - t[0]
 
 
 def _track_step(gray: np.ndarray, prev: Circle, template, min_score: float,
