@@ -13,3 +13,7 @@ is built. See [prototype/README.md](prototype/README.md).
 | 3 | Live in-set feedback and fatigue alerts | Not started |
 | 4 | Load-velocity profiles, estimated 1RM, readiness | Not started |
 | 5 | Programming integration | Not started |
+
+## iPhone app
+
+The native app lives in `ios/`. See `ios/README.md` for how to put it on an iPhone.
