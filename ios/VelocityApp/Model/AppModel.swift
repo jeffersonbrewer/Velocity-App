@@ -40,6 +40,7 @@ enum SettingsKey {
     static let velocityLossCutoff = "velocityLossCutoff"  // percent
     static let lastExercise = "lastExercise"
     static let lastLoadKg = "lastLoadKg"
+    static let keepSetVideos = "keepSetVideos"     // save recorded sets to Photos
 
     static func analysisSettings(_ d: UserDefaults = .standard) -> AnalysisSettings {
         let cutoff = d.object(forKey: cutoffHz) as? Double ?? 8.0

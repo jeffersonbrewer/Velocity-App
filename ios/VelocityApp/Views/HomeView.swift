@@ -13,6 +13,7 @@ struct HomeView: View {
     @State private var clip: Clip?
     @State private var errorText: String?
     @State private var showSettings = false
+    @State private var showCamera = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
@@ -20,6 +21,21 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    Card {
+                        CardLabel(text: "Record a set")
+                        Text("Phone on a tripod, level, side-on to the plate, about 1.5 to 3 m away.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.muted)
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Label("Open camera", systemImage: "video.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    }
+
                     Card {
                         CardLabel(text: "Analyze a recorded set")
                         Text("Film the set from the side in slow motion (240 fps) with the whole plate in view, then pick the video here.")
@@ -29,7 +45,7 @@ struct HomeView: View {
                             Label("Choose from Photos", systemImage: "photo.on.rectangle")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.bordered)
                         .controlSize(.large)
                         Button {
                             showFiles = true
@@ -74,6 +90,7 @@ struct HomeView: View {
                 SetResultsView(setID: id)
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
+            .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
             .fileImporter(isPresented: $showFiles, allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie]) { result in
                 switch result {
                 case .success(let url):

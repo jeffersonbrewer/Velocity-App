@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Circle: Codable, Hashable, Sendable {
+public struct PlateCircle: Codable, Hashable, Sendable {
     public var x: Double
     public var y: Double
     public var r: Double
@@ -20,7 +20,7 @@ enum CircleFit {
     /// Fit a circle to the plate's outer edge with sub-pixel precision. Mirrors tracking.refine_circle:
     /// sample along rays from the approximate center, take the strongest edge on each ray, then
     /// least-squares fit a circle with outlier rejection.
-    static func refine(_ img: GrayImage, x: Double, y: Double, r: Double) -> Circle? {
+    static func refine(_ img: GrayImage, x: Double, y: Double, r: Double) -> PlateCircle? {
         let r0 = 0.75 * r
         let step = (1.25 * r - r0) / Double(nRadii - 1)
         var edgeR = [Double](repeating: 0, count: nRays)
@@ -75,7 +75,7 @@ enum CircleFit {
             px = px.indices.filter { inl[$0] }.map { px[$0] }
             py = py.indices.filter { inl[$0] }.map { py[$0] }
         }
-        return Circle(x: fit.x, y: fit.y, r: fit.r, roundness: px.count >= 5 ? roundness(px, py) : 1, support: px.count)
+        return PlateCircle(x: fit.x, y: fit.y, r: fit.r, roundness: px.count >= 5 ? roundness(px, py) : 1, support: px.count)
     }
 
     /// Algebraic (Kasa) least-squares circle fit.

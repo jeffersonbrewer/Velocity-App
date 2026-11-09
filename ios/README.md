@@ -1,8 +1,21 @@
 # Velocity iPhone app
 
-Milestone 1: pick a slow-motion set video, enter the exercise and load, and get set results
-(reps, mean and peak velocity, bar and system power, distance, velocity loss). Peak velocity and
-peak power are tagged **Beta** until they are validated against GymAware.
+Record a set at 240 fps with a live plate and level check, or pick a slow-motion video you
+already have, and get set results (reps, mean and peak velocity, bar and system power, distance,
+velocity loss). Peak velocity and peak power are tagged **Beta** until they are validated against
+GymAware.
+
+- Milestone 1 (done): analyze a recorded video from Photos or Files.
+- Milestone 2: **Open camera** on the start screen. The chips on the preview show whether the
+  plate is found (green ring), whether the phone is level, and the frame rate. Press the red
+  button to record, press it again to stop; the set is analyzed straight away and the video is
+  deleted unless Settings › Save set videos to Photos is on.
+
+## Updating to a new version
+
+Quit Xcode, rename your old `velocity-app` folder (for example to `velocity-app-old`), unzip the
+new zip in its place, open `ios/VelocityApp.xcodeproj`, choose your Team again under Signing &
+Capabilities, and press Run. Delete the old folder once the new one runs.
 
 ```
 ios/

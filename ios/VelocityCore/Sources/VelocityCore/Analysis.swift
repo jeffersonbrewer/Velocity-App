@@ -98,7 +98,7 @@ public enum SetAnalyzer {
         if track.fps < 100 {
             out.append("Frame rate is \(Int(track.fps.rounded())) fps. Film in 240 fps slow motion for accurate results.")
         }
-        if track.roundness < 0.97 {
+        if track.roundness < 0.94 {
             out.append(String(format: "The plate looks oval (roundness %.2f). The camera may not be square to the bar, which distorts distances and velocities.", track.roundness))
         }
         if track.lostFraction > 0.05 {

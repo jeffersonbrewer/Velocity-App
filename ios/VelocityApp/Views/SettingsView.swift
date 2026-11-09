@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.cutoffHz) private var cutoffHz = 8.0
     @AppStorage(SettingsKey.plateDiameterCm) private var plateCm = 45.0
     @AppStorage(SettingsKey.tiltCorrection) private var tilt = true
+    @AppStorage(SettingsKey.keepSetVideos) private var keepVideos = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
@@ -29,6 +30,12 @@ struct SettingsView: View {
                         HStack { Text("Velocity-loss cutoff"); Spacer(); Text(lossCutoff > 0 ? Fmt.percent(lossCutoff) : "Off").foregroundStyle(Theme.muted) }
                     }
                 } header: { Text("Training") }
+
+                Section {
+                    Toggle("Save set videos to Photos", isOn: $keepVideos)
+                } header: { Text("Recording") } footer: {
+                    Text("Off: each recorded set is deleted once it's analyzed, so videos don't fill your phone. On: the 240 fps video is also saved to Photos.")
+                }
 
                 Section {
                     HStack {

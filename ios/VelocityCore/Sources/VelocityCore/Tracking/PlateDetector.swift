@@ -4,12 +4,12 @@ import Foundation
 /// cv2.HoughCircles(HOUGH_GRADIENT) in the prototype, then refines it on the full-size image.
 public enum PlateDetector {
     public static var debug = false
-    public static func debugRefine(_ img: GrayImage, x: Double, y: Double, r: Double) -> Circle? { CircleFit.refine(img, x: x, y: y, r: r) }
-    public static func debugDetect(_ img: GrayImage) -> Circle? { debug = true; defer { debug = false }; return detect(img) }
+    public static func debugRefine(_ img: GrayImage, x: Double, y: Double, r: Double) -> PlateCircle? { CircleFit.refine(img, x: x, y: y, r: r) }
+    public static func debugDetect(_ img: GrayImage) -> PlateCircle? { debug = true; defer { debug = false }; return detect(img) }
 
     /// Return the plate: the circle with the strongest center vote, upgraded to the largest
     /// well-covered concentric circle (the plate rim around the hub), or nil.
-    static func detect(_ full: GrayImage, minFrac: Double = 0.05, maxFrac: Double = 0.45) -> Circle? {
+    public static func detect(_ full: GrayImage, minFrac: Double = 0.05, maxFrac: Double = 0.45) -> PlateCircle? {
         // Search at half size for speed; the refinement afterwards restores full precision.
         let img = full.downsampled2x().median5()
         let w = img.width, h = img.height

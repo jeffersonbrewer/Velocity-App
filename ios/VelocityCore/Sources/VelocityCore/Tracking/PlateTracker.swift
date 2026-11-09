@@ -9,11 +9,11 @@ public final class PlateTracker {
     public private(set) var ys: [Double] = []
     public private(set) var rs: [Double] = []
     private var rounds: [Double] = []
-    private var prev: Circle?
+    private var prev: PlateCircle?
     private var template: PlateTemplate?
     private var misses = 0
-    private var lastGood: (c: Circle, t: Double)?
-    private var beforeLastGood: (c: Circle, t: Double)?
+    private var lastGood: (c: PlateCircle, t: Double)?
+    private var beforeLastGood: (c: PlateCircle, t: Double)?
     /// Plate radius from the first detection; the plate never changes size.
     private var refR: Double?
     private var frameWidth = 0, frameHeight = 0
@@ -25,14 +25,14 @@ public final class PlateTracker {
     public init(minScore: Double = 0.5) { self.minScore = minScore }
 
     /// The latest plate position, for drawing an overlay.
-    public var current: Circle? { prev }
+    public var current: PlateCircle? { prev }
 
     /// Process one frame. time is the frame's presentation time in seconds.
     @discardableResult
-    public func add(_ gray: GrayImage, time: Double) -> Circle? {
+    public func add(_ gray: GrayImage, time: Double) -> PlateCircle? {
         frameWidth = gray.width; frameHeight = gray.height
         times.append(time)
-        var circle: Circle? = nil
+        var circle: PlateCircle? = nil
         if let p = prev {
             circle = step(gray, prev: p, time: time)
         } else {
@@ -63,9 +63,9 @@ public final class PlateTracker {
         return circle
     }
 
-    private func step(_ gray: GrayImage, prev: Circle, time: Double) -> Circle? {
+    private func step(_ gray: GrayImage, prev: PlateCircle, time: Double) -> PlateCircle? {
         let r0 = refR ?? prev.r
-        func accept(_ c: Circle?, guessX: Double, guessY: Double) -> Circle? {
+        func accept(_ c: PlateCircle?, guessX: Double, guessY: Double) -> PlateCircle? {
             // Reject fits that jump implausibly or change size, which signal a wrong edge. Check against
             // the first detection so the fit cannot creep inward to the hub ring a few percent at a time
             // while a leg passes in front. 12% leaves room for a tilted camera.
