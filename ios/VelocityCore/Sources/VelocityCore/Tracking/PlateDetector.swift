@@ -4,6 +4,7 @@ import Foundation
 /// cv2.HoughCircles(HOUGH_GRADIENT) in the prototype, then refines it on the full-size image.
 public enum PlateDetector {
     public static var debug = false
+    public static func debugRefine(_ img: GrayImage, x: Double, y: Double, r: Double) -> Circle? { CircleFit.refine(img, x: x, y: y, r: r) }
     public static func debugDetect(_ img: GrayImage) -> Circle? { debug = true; defer { debug = false }; return detect(img) }
 
     /// Return the plate: the circle with the strongest center vote, upgraded to the largest

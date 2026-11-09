@@ -95,6 +95,14 @@ case "detect":
     let c = PlateDetector.debugDetect(img)
     print(c.map { "plate x \($0.x) y \($0.y) r \($0.r) roundness \($0.roundness)" } ?? "no plate")
 
+case "refine":
+    // vbt-cli refine frame.gray w h x y r
+    guard args.count == 8, let w = Int(args[3]), let h = Int(args[4]), let x = Double(args[5]), let y = Double(args[6]),
+          let r = Double(args[7]), let data = FileManager.default.contents(atPath: args[2]) else { fail("usage") }
+    let img = GrayImage(width: w, height: h, pixels: [UInt8](data.prefix(w * h)))
+    let c = PlateDetector.debugRefine(img, x: x, y: y, r: r)
+    print(c.map { "\($0.x) \($0.y) \($0.r)" } ?? "none")
+
 default:
     fail("unknown command \(args[1])")
 }

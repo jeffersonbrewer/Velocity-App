@@ -77,9 +77,20 @@ public enum SetAnalyzer {
     public static func analyze(track: Track, input: SetInput, settings: AnalysisSettings = .init()) throws -> SetAnalysis {
         let kin = try KinematicsBuilder.fromTrack(track, plateDiameterM: settings.plateDiameterM,
                                                   cutoffHz: settings.cutoffHz, positionScale: settings.tiltCorrection)
-        let found = RepSegmenter.segment(kin, concentricFirst: input.exercise.concentricFirst)
+        var found = RepSegmenter.segment(kin, concentricFirst: input.exercise.concentricFirst)
+        var notes = warnings(for: track)
+        if !kin.bridgedGaps.isEmpty {
+            let before = found.count
+            found = found.filter { rep in
+                !kin.bridgedGaps.contains { $0.start <= rep.concentric.end && $0.end >= rep.concentric.start }
+            }
+            if found.count < before {
+                notes.append("The plate was hidden during \(before - found.count) lift(s), so they were left out.")
+            }
+            found = found.enumerated().map { i, r in Rep(number: i + 1, concentric: r.concentric, eccentric: r.eccentric) }
+        }
         return SetAnalysis(input: input, settings: settings, track: track, kinematics: kin,
-                           reps: found.map { EditableRep(detected: $0) }, warnings: warnings(for: track))
+                           reps: found.map { EditableRep(detected: $0) }, warnings: notes)
     }
 
     public static func warnings(for track: Track) -> [String] {

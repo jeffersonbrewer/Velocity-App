@@ -36,6 +36,9 @@ public struct Kinematics: Sendable {
     public var a: [Double]   // m/s², vertical acceleration
     public var fps: Double
     public var metersPerPixel: Double
+    /// Stretches where the plate was lost for longer than the allowed gap and the position was
+    /// bridged with a straight line. Reps overlapping these are not trusted.
+    public var bridgedGaps: [Phase] = []
 }
 
 public enum KinematicsError: Error, LocalizedError {
@@ -46,7 +49,7 @@ public enum KinematicsError: Error, LocalizedError {
         switch self {
         case .plateNeverFound: return "The plate was not found in the video."
         case .trackingLostMidClip:
-            return "The plate was lost for too long in the middle of the clip. Make sure nothing blocks the plate."
+            return "The plate was lost for much of the clip. Make sure nothing blocks the plate and the whole plate stays in the frame."
         }
     }
 }
@@ -68,9 +71,18 @@ public enum KinematicsBuilder {
             throw KinematicsError.plateNeverFound
         }
         let last = lastGood + 1
-        if ypAll[first..<last].contains(where: { $0.isNaN }) { throw KinematicsError.trackingLostMidClip }
         let t = Array(track.t[first..<last])
-        let yp = Array(ypAll[first..<last]), xp = Array(xpAll[first..<last])
+        var yp = Array(ypAll[first..<last]), xp = Array(xpAll[first..<last])
+        // The prototype stops here when the plate is lost for a long time mid-clip. The app bridges
+        // the gap instead and later drops any rep that overlaps it, so one bad moment (someone walking
+        // past during setup) does not lose the whole set.
+        var bridged: [Phase] = []
+        if yp.contains(where: { $0.isNaN }) {
+            for (s, e) in RepSegmenter.runsOf(yp.map { $0.isNaN }) { bridged.append(Phase(start: s, end: e)) }
+            yp = fillGaps(yp, maxGap: yp.count)
+            xp = fillGaps(xp, maxGap: xp.count)
+            if bridged.reduce(0, { $0 + $1.end - $1.start + 1 }) > yp.count / 4 { throw KinematicsError.trackingLostMidClip }
+        }
 
         var x = [Double](repeating: 0, count: yp.count)
         var y = [Double](repeating: 0, count: yp.count)
@@ -91,7 +103,9 @@ public enum KinematicsBuilder {
                 x[i] = (xp[i] - xp[0]) * mPerPx
             }
         }
-        return fromPosition(t: t, x: x, y: y, fps: track.fps, cutoffHz: cutoffHz, metersPerPixel: mPerPx)
+        var kin = fromPosition(t: t, x: x, y: y, fps: track.fps, cutoffHz: cutoffHz, metersPerPixel: mPerPx)
+        kin.bridgedGaps = bridged
+        return kin
     }
 
     /// Filter a position signal (meters) and differentiate it. cutoffHz nil or 0 skips filtering.
