@@ -84,6 +84,27 @@ final class PipelineTests: XCTestCase {
     }
 }
 
+final class ResampleTests: XCTestCase {
+    /// A 240 fps recording whose timestamps jitter must still be analyzed on a 240 Hz grid.
+    func testJitteryTimestampsSnapToCaptureRate() {
+        var t: [Double] = []
+        var time = 0.0
+        for i in 0..<2400 {
+            t.append(time)
+            let step: Double
+            switch i % 10 {
+            case 0: step = 1.0 / 300
+            case 1: step = 2.0 / 240 - 1.0 / 300
+            default: step = 1.0 / 240
+            }
+            time += step
+        }
+        let track = Track(fps: 240, t: t, x: t.map { _ in 0 }, y: t.map { 500 + 100 * sin($0) }, r: t.map { _ in 100 },
+                          roundness: 1, frameWidth: 1080, frameHeight: 1920)
+        XCTAssertEqual(KinematicsBuilder.resampleUniform(track).fps, 240)
+    }
+}
+
 final class TrackingTests: XCTestCase {
     /// Draw a dark plate with a lighter hub on a light background and check it is found precisely.
     func testDetectsAndRefinesPlate() throws {

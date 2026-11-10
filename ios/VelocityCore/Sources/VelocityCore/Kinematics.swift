@@ -154,7 +154,15 @@ public enum KinematicsBuilder {
         let dt = (1..<n).map { track.t[$0] - track.t[$0 - 1] }
         let ptp = (dt.max() ?? 0) - (dt.min() ?? 0)
         if ptp < 0.05 * Stats.median(dt) { return track }
-        let rate = (1.0 / Stats.percentile(dt, 5)).rounded(.toNearestOrEven)
+        var rate = (1.0 / Stats.percentile(dt, 5)).rounded(.toNearestOrEven)
+        // Frames recorded in the app have a little timestamp jitter, so a few intervals are short
+        // and the rule above can give a rate the camera never ran at (300 Hz for a 240 fps
+        // recording). Then take the typical short interval and snap it to a real capture rate.
+        let standard = [30.0, 60.0, 120.0, 240.0]
+        if !standard.contains(where: { abs(rate - $0) <= 0.05 * $0 }) {
+            let typical = 1.0 / Stats.percentile(dt, 25)
+            rate = standard.min(by: { abs($0 - typical) < abs($1 - typical) })!
+        }
         let step = 1.0 / rate
         let stop = track.t[n - 1] + 1e-9
         let count = Int((stop / step).rounded(.up))
