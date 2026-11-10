@@ -7,7 +7,6 @@ struct SetDetailsView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(SettingsKey.unit) private var unitRaw = WeightUnit.lb.rawValue
     @AppStorage(SettingsKey.bodyMassKg) private var bodyMassKg = 0.0
-    @State private var setType: SetType = .working
     @State private var job: Task<Void, Never>?
     @State private var progress: VideoTracker.Progress?
     @State private var errorText: String?
@@ -27,7 +26,7 @@ struct SetDetailsView: View {
                     ForEach(ExerciseCatalog.all) { Text($0.name).tag($0.id) }
                 }
                 LoadField(loadKg: model.loadBinding(model.currentExerciseID), unit: unit)
-                Picker("Set type", selection: $setType) {
+                Picker("Set type", selection: model.nextSetTypeBinding) {
                     ForEach(SetType.allCases) { Text($0.rawValue).tag($0) }
                 }
             } header: { Text("Set") } footer: {
@@ -82,7 +81,7 @@ struct SetDetailsView: View {
         let input = model.setInput(exerciseID: id, loadKg: model.prefs(for: id).loadKg)
         let settings = SettingsKey.analysisSettings()
         let asset = clip.asset
-        let type = setType, name = clip.name, filmed = clip.date ?? Date()
+        let type = model.nextSetType, name = clip.name, filmed = clip.date ?? Date()
         job = Task {
             do {
                 let analysis = try await Task.detached(priority: .userInitiated) {

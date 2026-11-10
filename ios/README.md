@@ -14,6 +14,12 @@ GymAware.
   remembers its load, target zone and loss cutoff), the next set and the sets done today.
   **History** lists exercises (best mean velocity at a chosen load over time) and sessions by day.
   Sets are stored as plate tracks, not videos, so they take little space.
+- Milestone 4: **Strength profile** (History › exercise › Open profile, or the card on Today).
+  Tag a ramp of 4–6 loads as **Profile test** (the set type on Today stays until you change it)
+  and optionally a heavy single as **Max single**. The profile draws the load–velocity line from
+  the latest test day, estimates 1RM at your 1RM velocity (your slowest Max single, else the
+  editable group default), checks readiness from today's first set, and suggests a retest after
+  4 weeks. Working sets never change it. Retag an old set with the tag button on its results.
 
 ## Updating to a new version
 

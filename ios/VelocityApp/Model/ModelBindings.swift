@@ -7,6 +7,10 @@ extension AppModel {
         Binding(get: { self.currentExerciseID }, set: { self.currentExerciseID = $0 })
     }
 
+    var nextSetTypeBinding: Binding<SetType> {
+        Binding(get: { self.nextSetType }, set: { self.nextSetType = $0 })
+    }
+
     /// An exercise's remembered load in kg.
     func loadBinding(_ id: String) -> Binding<Double> {
         Binding(get: { self.prefs(for: id).loadKg },

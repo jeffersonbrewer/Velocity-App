@@ -54,6 +54,7 @@ struct HistoryView: View {
                 switch route {
                 case .exercise(let id): ExerciseHistoryView(exerciseID: id)
                 case .session(let day): SessionView(day: day)
+                case .profile(let id): ProfileView(exerciseID: id)
                 }
             }
             .navigationDestination(for: UUID.self) { id in SetResultsView(setID: id) }
@@ -71,6 +72,7 @@ struct HistoryView: View {
 enum HistoryRoute: Hashable {
     case exercise(String)
     case session(Date)
+    case profile(String)
 }
 
 /// All sets from one day.
@@ -196,11 +198,7 @@ struct ExerciseHistoryView: View {
                     }
                 }
 
-                Card {
-                    CardLabel(text: "Strength profile")
-                    Text("Estimated 1RM from your Profile test and Max single sets arrives in the next update.")
-                        .font(.subheadline).foregroundStyle(Theme.muted)
-                }
+                profileCard
 
                 CardLabel(text: "All sets").padding(.top, 4)
                 ForEach(sets) { set in
@@ -217,6 +215,32 @@ struct ExerciseHistoryView: View {
         .navigationTitle(ExerciseCatalog.exercise(id: exerciseID)?.name ?? "Exercise")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $editingTargets) { TargetsSheet(exerciseID: exerciseID) }
+    }
+
+    private var profileCard: some View {
+        let prof = model.profile(for: exerciseID)
+        return Card {
+            HStack {
+                CardLabel(text: "Strength profile")
+                Spacer()
+                if prof.lastTestDate != nil, prof.retestReason() != nil { Pill(text: "Retest suggested", color: Theme.warn) }
+            }
+            if let orm = prof.oneRmKg {
+                detail("Estimated 1RM", "\(unit.format(kg: unit.roundedToStep(kg: orm))) \(unit.rawValue)")
+            }
+            if let last = prof.lastTestDate {
+                let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: last),
+                                                           to: Calendar.current.startOfDay(for: Date())).day ?? 0
+                detail("Last profile test", "\(last.formatted(.dateTime.month(.abbreviated).day())) · \(days == 0 ? "today" : "\(days) days ago")")
+            } else {
+                Text("No profile test yet. Tag a ramp of sets as Profile test to estimate your 1RM.")
+                    .font(.subheadline).foregroundStyle(Theme.muted)
+            }
+            NavigationLink(value: HistoryRoute.profile(exerciseID)) {
+                Text("Open profile").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
     }
 
     private func detail(_ label: String, _ value: String) -> some View {

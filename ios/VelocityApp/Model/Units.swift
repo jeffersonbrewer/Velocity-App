@@ -13,6 +13,9 @@ enum WeightUnit: String, CaseIterable, Identifiable {
     func fromKg(_ kg: Double) -> Double { self == .kg ? kg : kg / WeightUnit.kgPerLb }
     func toKg(_ value: Double) -> Double { self == .kg ? value : value * WeightUnit.kgPerLb }
 
+    /// A load rounded to the nearest plate step (2.5 kg or 5 lb), in kg.
+    func roundedToStep(kg: Double) -> Double { toKg((fromKg(kg) / step).rounded() * step) }
+
     /// A load in this unit, always with every needed decimal (102.5, not 102 or 103).
     func format(kg: Double) -> String { Fmt.load(fromKg(kg)) }
 }

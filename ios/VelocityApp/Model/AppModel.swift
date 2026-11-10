@@ -2,6 +2,8 @@ import Foundation
 import Observation
 import VelocityCore
 
+enum AppTab: Hashable { case today, history, settings }
+
 /// Whether a set counts toward the strength profile.
 enum SetType: String, CaseIterable, Identifiable, Codable {
     case working = "Working"
@@ -38,6 +40,7 @@ struct ExercisePrefs: Codable, Equatable {
     var targetLow: Double?        // m/s
     var targetHigh: Double?       // m/s
     var lossCutoffPct: Double?    // nil: use the default in Settings
+    var editedMvt: Double?        // lifter's replacement for the group-default 1RM velocity, m/s
 
     var targetZone: ClosedRange<Double>? {
         guard let lo = targetLow, let hi = targetHigh, lo < hi else { return nil }
@@ -54,6 +57,9 @@ final class AppModel {
         didSet { UserDefaults.standard.set(currentExerciseID, forKey: SettingsKey.lastExercise) }
     }
     var loaded = false
+    /// Type for the next set recorded or analyzed. Stays until changed, so a whole ramp can be tagged.
+    var nextSetType: SetType = .working
+    var selectedTab: AppTab = .today
 
     private let store: SetStore
 
@@ -97,6 +103,12 @@ final class AppModel {
 
     func set(_ id: UUID) -> AnalyzedSet? { sets.first { $0.id == id } }
 
+    func changeType(of id: UUID, to type: SetType) {
+        guard var s = set(id), s.setType != type else { return }
+        s.setType = type
+        update(s)
+    }
+
     private func persist(_ set: AnalyzedSet) {
         let record = set.record
         let store = self.store
@@ -131,6 +143,39 @@ final class AppModel {
         var ids = usedExerciseIDs
         if !ids.contains(currentExerciseID) { ids.insert(currentExerciseID, at: 0) }
         return Array(ids.prefix(8))
+    }
+
+    // MARK: Strength profile
+
+    /// The exercise's profile from its Profile test and Max single sets only.
+    func profile(for id: String) -> StrengthProfile {
+        let ex = ExerciseCatalog.exercise(id: id)
+        let tagged: [ProfileSet] = sets.compactMap { s in
+            guard s.exerciseID == id, s.setType != .working, let m = s.analysis.setMetrics, m.repCount > 0 else { return nil }
+            return ProfileSet(date: s.date, loadKg: m.loadKg, bestMeanVelocity: m.bestMeanVelocity,
+                              slowestMeanVelocity: m.reps.map(\.meanVelocity).min() ?? m.bestMeanVelocity,
+                              isMaxSingle: s.setType == .maxSingle)
+        }
+        return StrengthProfile.build(sets: tagged, defaultMvt: ex?.defaultMvt, editedMvt: prefs(for: id).editedMvt,
+                                     allowsOneRm: ex?.allowsOneRm ?? true)
+    }
+
+    /// Readiness from today's first set of the exercise, compared with its profile.
+    func readinessToday(for id: String) -> (set: AnalyzedSet, expected: Double, delta: Double, reading: Readiness)? {
+        guard let first = sets(on: Date()).last(where: { $0.exerciseID == id }),
+              let m = first.analysis.setMetrics, m.repCount > 0 else { return nil }
+        let p = profile(for: id)
+        // A profile test done today is the reference itself, so it can't also be the check.
+        if let d = p.testDate, Calendar.current.isDateInToday(d) { return nil }
+        guard let r = p.readiness(loadKg: m.loadKg, bestMeanVelocity: m.bestMeanVelocity) else { return nil }
+        return (first, r.expected, r.delta, r.reading)
+    }
+
+    /// Get ready to record a profile test of an exercise from the Today tab.
+    func startProfileTest(_ id: String) {
+        currentExerciseID = id
+        nextSetType = .profileTest
+        selectedTab = .today
     }
 
     // MARK: Per-exercise settings

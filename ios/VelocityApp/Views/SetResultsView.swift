@@ -69,6 +69,14 @@ struct SetResultsView: View {
                 .accessibilityLabel("Export reps as CSV")
             }
             ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Set type", selection: Binding(get: { set.setType }, set: { model.changeType(of: setID, to: $0) })) {
+                        ForEach(SetType.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                } label: { Image(systemName: "tag") }
+                .accessibilityLabel("Set type")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button(role: .destructive) { confirmDelete = true } label: { Image(systemName: "trash") }
                     .accessibilityLabel("Delete set")
             }

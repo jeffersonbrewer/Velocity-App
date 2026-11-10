@@ -25,6 +25,7 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     exerciseChips
                     nextSetCard
+                    profileStrip
                     let today = model.sets(on: Date())
                     if !today.isEmpty {
                         summaryTiles(today)
@@ -43,6 +44,9 @@ struct TodayView: View {
             .navigationTitle("Today")
             .navigationDestination(item: $clip) { clip in SetDetailsView(clip: clip) }
             .navigationDestination(for: UUID.self) { id in SetResultsView(setID: id) }
+            .navigationDestination(for: TodayRoute.self) { route in
+                switch route { case .profile(let id): ProfileView(exerciseID: id) }
+            }
             .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
             .sheet(isPresented: $editingTargets) { TargetsSheet(exerciseID: model.currentExerciseID) }
             .fileImporter(isPresented: $showFiles, allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie]) { result in
@@ -114,6 +118,19 @@ struct TodayView: View {
             CardLabel(text: "Next set")
             Text(exercise.name).font(.title3.weight(.bold))
             LoadField(loadKg: model.loadBinding(id), unit: unit)
+            HStack {
+                Text("Set type").foregroundStyle(Theme.muted)
+                Spacer()
+                Picker("Set type", selection: model.nextSetTypeBinding) {
+                    ForEach(SetType.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.menu)
+            }
+            .font(.subheadline)
+            if model.nextSetType != .working {
+                Text("Tagged sets build your strength profile. Switch back to Working when the test is done.")
+                    .font(.caption).foregroundStyle(Theme.muted)
+            }
             Button {
                 editingTargets = true
             } label: {
@@ -161,6 +178,40 @@ struct TodayView: View {
         }
     }
 
+    /// Estimated 1RM, today's readiness and a retest nudge for the current exercise.
+    @ViewBuilder
+    private var profileStrip: some View {
+        let id = model.currentExerciseID
+        let prof = model.profile(for: id)
+        if prof.lastTestDate != nil {
+            NavigationLink(value: TodayRoute.profile(id)) {
+                Card {
+                    HStack {
+                        CardLabel(text: "Strength profile")
+                        Spacer()
+                        if prof.retestReason() != nil { Pill(text: "Retest suggested", color: Theme.warn) }
+                        Image(systemName: "chevron.right").foregroundStyle(Theme.muted)
+                    }
+                    HStack {
+                        Text("Estimated 1RM").foregroundStyle(Theme.muted)
+                        Spacer()
+                        Text(prof.oneRmKg.map { "\(unit.format(kg: unit.roundedToStep(kg: $0))) \(unit.rawValue)" } ?? "–").monospacedDigit()
+                    }
+                    .font(.subheadline)
+                    if let r = model.readinessToday(for: id) {
+                        HStack {
+                            Text("Readiness from first set").foregroundStyle(Theme.muted)
+                            Spacer()
+                            Pill(text: r.reading.rawValue, color: readinessColor(r.reading))
+                        }
+                        .font(.subheadline)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     private func summaryTiles(_ today: [AnalyzedSet]) -> some View {
         let volume = today.compactMap { $0.analysis.setMetrics?.volumeLoadKg }.reduce(0, +)
         let best = today.compactMap { $0.analysis.setMetrics?.bestMeanVelocity }.max()
@@ -176,6 +227,8 @@ struct TodayView: View {
         }
     }
 }
+
+enum TodayRoute: Hashable { case profile(String) }
 
 extension Clip: Hashable {
     static func == (l: Clip, r: Clip) -> Bool { l.id == r.id }

@@ -147,3 +147,46 @@ final class TrackingTests: XCTestCase {
         XCTAssertGreaterThan(c.roundness, 0.97)
     }
 }
+
+final class ProfileTests: XCTestCase {
+    private func day(_ d: Int) -> Date { Date(timeIntervalSince1970: 1_790_000_000 + Double(d) * 86_400) }
+
+    /// Line fit matches numpy.polyfit, and the 1RM is read off at the group default.
+    func testFitAndOneRm() throws {
+        let loads = [60.0, 80, 100, 120]
+        let mv = loads.map { 1.62 - 0.008 * $0 }
+        let sets = zip(loads, mv).map { ProfileSet(date: day(0), loadKg: $0, bestMeanVelocity: $1, slowestMeanVelocity: $1 - 0.05, isMaxSingle: false) }
+        let p = StrengthProfile.build(sets: sets, defaultMvt: 0.26)
+        let line = try XCTUnwrap(p.line)
+        XCTAssertEqual(line.slope, -0.008, accuracy: 1e-9)
+        XCTAssertEqual(line.intercept, 1.62, accuracy: 1e-9)
+        XCTAssertEqual(line.r2, 1, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(p.oneRmKg), 170, accuracy: 1e-6)
+        XCTAssertEqual(p.mvtSource, .groupDefault)
+        XCTAssertEqual(p.readiness(loadKg: 100, bestMeanVelocity: 0.83)?.reading, .normal)
+        XCTAssertEqual(p.readiness(loadKg: 100, bestMeanVelocity: 0.74)?.reading, .down)
+    }
+
+    /// A max single replaces the default 1RM velocity; the line comes from the latest ramp; edits lose to a measured value.
+    func testMeasuredMvtAndLatestTest() throws {
+        var sets = [60.0, 100].map { ProfileSet(date: day(0), loadKg: $0, bestMeanVelocity: 1.5 - 0.01 * $0, slowestMeanVelocity: 0, isMaxSingle: false) }
+        sets += [60.0, 80, 100].map { ProfileSet(date: day(30), loadKg: $0, bestMeanVelocity: 1.62 - 0.008 * $0, slowestMeanVelocity: 0, isMaxSingle: false) }
+        sets.append(ProfileSet(date: day(30).addingTimeInterval(600), loadKg: 160, bestMeanVelocity: 0.34, slowestMeanVelocity: 0.34, isMaxSingle: true))
+        let p = StrengthProfile.build(sets: sets, defaultMvt: 0.30, editedMvt: 0.20)
+        XCTAssertEqual(p.testSets.count, 4)
+        XCTAssertEqual(p.mvt, 0.34)
+        XCTAssertEqual(try XCTUnwrap(p.oneRmKg), 160, accuracy: 1)
+        XCTAssertNil(p.retestReason(today: day(40)))
+        XCTAssertNotNil(p.retestReason(today: day(58)))
+    }
+
+    func testNoLineWithOneLoadAndNoOneRmForCleans() {
+        let one = [ProfileSet(date: day(0), loadKg: 100, bestMeanVelocity: 0.8, slowestMeanVelocity: 0.7, isMaxSingle: false)]
+        XCTAssertNil(StrengthProfile.build(sets: one, defaultMvt: 0.3).line)
+        let ramp = [60.0, 80].map { ProfileSet(date: day(0), loadKg: $0, bestMeanVelocity: 2 - 0.01 * $0, slowestMeanVelocity: 1, isMaxSingle: false) }
+        let p = StrengthProfile.build(sets: ramp, defaultMvt: nil, allowsOneRm: false)
+        XCTAssertNotNil(p.line)
+        XCTAssertNil(p.oneRmKg)
+        XCTAssertFalse(ExerciseCatalog.exercise(id: "power_clean")!.allowsOneRm)
+    }
+}

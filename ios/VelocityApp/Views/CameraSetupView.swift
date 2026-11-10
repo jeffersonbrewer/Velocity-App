@@ -10,7 +10,6 @@ struct CameraSetupView: View {
     @StateObject private var camera = CameraRecorder()
     @AppStorage(SettingsKey.unit) private var unitRaw = WeightUnit.lb.rawValue
     @AppStorage(SettingsKey.keepSetVideos) private var keepVideos = false
-    @State private var setType: SetType = .working
     @State private var analyzing: VideoTracker.Progress?
     @State private var errorText: String?
     @State private var resultID: UUID?
@@ -171,7 +170,7 @@ struct CameraSetupView: View {
                 }
                 .pickerStyle(.menu)
                 Spacer()
-                Picker("Set type", selection: $setType) {
+                Picker("Set type", selection: model.nextSetTypeBinding) {
                     ForEach(SetType.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.menu)
@@ -210,7 +209,7 @@ struct CameraSetupView: View {
         let id = model.currentExerciseID
         let input = model.setInput(exerciseID: id, loadKg: model.prefs(for: id).loadKg)
         let settings = SettingsKey.analysisSettings()
-        let type = setType
+        let type = model.nextSetType
         let keep = keepVideos
         camera.stopRecording { url in
             guard let url else { errorText = "Nothing was recorded. Try again."; return }

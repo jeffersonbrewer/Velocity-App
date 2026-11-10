@@ -13,6 +13,9 @@ public struct Exercise: Codable, Hashable, Identifiable, Sendable {
     public var mvtSource: String?
     public var mvtChecked: Bool
 
+    /// Olympic lifts have no dependable 1RM velocity, so no 1RM is estimated for them.
+    public var allowsOneRm: Bool { !ExerciseCatalog.noOneRm.contains(id) }
+
     public init(id: String, name: String, concentricFirst: Bool, bodyMassFraction: Double,
                 defaultMvt: Double? = nil, mvtSource: String? = nil, mvtChecked: Bool = false) {
         self.id = id; self.name = name; self.concentricFirst = concentricFirst
@@ -52,6 +55,8 @@ public enum ExerciseCatalog {
                  defaultMvt: 0.20, mvtSource: "Sanchez-Moreno et al. 2017 (0.20 ± 0.05 m/s)", mvtChecked: true),
         Exercise(id: "dip", name: "Dip (weighted)", concentricFirst: false, bodyMassFraction: 1.0),
     ]
+
+    static let noOneRm: Set<String> = ["power_clean"]
 
     public static func exercise(id: String) -> Exercise? { all.first { $0.id == id } }
 }
