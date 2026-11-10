@@ -26,6 +26,7 @@ struct CameraSetupView: View {
                 controls
             }
             .background(Theme.background)
+            .keyboardDoneButton()
             .navigationTitle("Record a set")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

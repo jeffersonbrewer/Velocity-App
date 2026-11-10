@@ -58,3 +58,19 @@ struct BetaNote: View {
         }
     }
 }
+
+extension View {
+    /// Number pads have no return key, so add a Done button above the keyboard to close it.
+    /// Apply once per screen.
+    func keyboardDoneButton() -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .fontWeight(.semibold)
+            }
+        }
+    }
+}

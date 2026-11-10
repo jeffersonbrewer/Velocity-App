@@ -66,6 +66,8 @@ struct SetDetailsView: View {
             }
         }
         .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+        .keyboardDoneButton()
         .background(Theme.background)
         .navigationTitle("Set details")
         .navigationBarTitleDisplayMode(.inline)

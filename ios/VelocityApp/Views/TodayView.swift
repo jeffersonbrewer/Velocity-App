@@ -37,6 +37,8 @@ struct TodayView: View {
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDoneButton()
             .background(Theme.background)
             .navigationTitle("Today")
             .navigationDestination(item: $clip) { clip in SetDetailsView(clip: clip) }
