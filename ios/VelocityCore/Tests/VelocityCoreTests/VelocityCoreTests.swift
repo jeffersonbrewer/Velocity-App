@@ -77,6 +77,28 @@ final class PipelineTests: XCTestCase {
         XCTAssertNil(m.systemMeanPower)
     }
 
+    func testSetRecordRoundTripKeepsEditsAndNumbers() throws {
+        let ex = ExerciseCatalog.exercise(id: "trap_bar_deadlift")!
+        var a = try SetAnalyzer.analyze(track: syntheticTrack(), input: SetInput(exercise: ex, loadKg: 100, bodyMassKg: 80))
+        a.reps[2].deleted = true
+        a.reps[0].adjustedConcentric = Phase(start: a.reps[0].detected.concentric.start + 10, end: a.reps[0].detected.concentric.end)
+        var track = a.track
+        track.x[5] = .nan  // lost frames must survive the round trip
+        a.track = track
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = SetStore(folder: folder)
+        let id = UUID()
+        try store.save(SetRecord(id: id, date: Date(), setType: "Working", clipName: "test", analysis: a))
+        let loaded = store.loadAll()
+        XCTAssertEqual(loaded.count, 1)
+        XCTAssertTrue(loaded[0].track.x[5].isNaN)
+        let b = try loaded[0].analysis()
+        XCTAssertEqual(b.setMetrics?.repCount, 2)
+        XCTAssertEqual(b.setMetrics!.meanVelocity, a.setMetrics!.meanVelocity, accuracy: 1e-9)
+        store.delete(id)
+        XCTAssertEqual(store.loadAll().count, 0)
+    }
+
     func testPeakMetricsAreBeta() {
         XCTAssertEqual(MetricKind.peakVelocity.status, .beta)
         XCTAssertEqual(MetricKind.peakPower.status, .beta)

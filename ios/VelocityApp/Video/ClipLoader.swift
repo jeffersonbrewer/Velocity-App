@@ -27,6 +27,8 @@ struct Clip: Identifiable {
     let id = UUID()
     let asset: AVAsset
     let name: String
+    /// When the video was filmed, if known; the set is filed under that day.
+    var date: Date? = nil
 }
 
 enum ClipLoader {
@@ -54,7 +56,7 @@ enum ClipLoader {
             }
         }
         let name = PHAssetResource.assetResources(for: phAsset).first?.originalFilename ?? "Video"
-        return Clip(asset: asset, name: name)
+        return Clip(asset: asset, name: name, date: phAsset.creationDate)
     }
 
     /// Copy a video picked in Files (for example an original AirDropped from another phone)

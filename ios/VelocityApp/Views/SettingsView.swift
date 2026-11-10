@@ -2,6 +2,7 @@ import SwiftUI
 import VelocityCore
 
 struct SettingsView: View {
+    var showsDone = true
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKey.unit) private var unitRaw = WeightUnit.lb.rawValue
     @AppStorage(SettingsKey.bodyMassKg) private var bodyMassKg = 0.0
@@ -27,7 +28,7 @@ struct SettingsView: View {
 
                 Section {
                     Stepper(value: $lossCutoff, in: 0...50, step: 5) {
-                        HStack { Text("Velocity-loss cutoff"); Spacer(); Text(lossCutoff > 0 ? Fmt.percent(lossCutoff) : "Off").foregroundStyle(Theme.muted) }
+                        HStack { Text("Default velocity-loss cutoff"); Spacer(); Text(lossCutoff > 0 ? Fmt.percent(lossCutoff) : "Off").foregroundStyle(Theme.muted) }
                     }
                 } header: { Text("Training") }
 
@@ -58,7 +59,9 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar {
+                if showsDone { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            }
         }
     }
 }

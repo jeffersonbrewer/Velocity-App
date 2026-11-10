@@ -7,9 +7,6 @@ struct SetDetailsView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(SettingsKey.unit) private var unitRaw = WeightUnit.lb.rawValue
     @AppStorage(SettingsKey.bodyMassKg) private var bodyMassKg = 0.0
-    @AppStorage(SettingsKey.lastExercise) private var exerciseID = "trap_bar_deadlift"
-    @AppStorage(SettingsKey.lastLoadKg) private var loadKg = 60.0
-    @AppStorage(SettingsKey.velocityLossCutoff) private var lossCutoff = 20.0
     @State private var setType: SetType = .working
     @State private var job: Task<Void, Never>?
     @State private var progress: VideoTracker.Progress?
@@ -17,7 +14,7 @@ struct SetDetailsView: View {
     @State private var resultID: UUID?
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
-    private var exercise: Exercise { ExerciseCatalog.exercise(id: exerciseID) ?? ExerciseCatalog.all[0] }
+    private var exercise: Exercise { ExerciseCatalog.exercise(id: model.currentExerciseID) ?? ExerciseCatalog.all[0] }
 
     var body: some View {
         Form {
@@ -26,10 +23,10 @@ struct SetDetailsView: View {
             } header: { Text("Video") }
 
             Section {
-                Picker("Exercise", selection: $exerciseID) {
+                Picker("Exercise", selection: model.exerciseBinding) {
                     ForEach(ExerciseCatalog.all) { Text($0.name).tag($0.id) }
                 }
-                LoadField(loadKg: $loadKg, unit: unit)
+                LoadField(loadKg: model.loadBinding(model.currentExerciseID), unit: unit)
                 Picker("Set type", selection: $setType) {
                     ForEach(SetType.allCases) { Text($0.rawValue).tag($0) }
                 }
@@ -79,12 +76,11 @@ struct SetDetailsView: View {
     private func start() {
         errorText = nil
         progress = VideoTracker.Progress(fraction: 0, plateFound: false)
-        let input = SetInput(exercise: exercise, loadKg: loadKg,
-                             bodyMassKg: bodyMassKg > 0 ? bodyMassKg : nil,
-                             velocityLossThresholdPct: lossCutoff > 0 ? lossCutoff : nil)
+        let id = model.currentExerciseID
+        let input = model.setInput(exerciseID: id, loadKg: model.prefs(for: id).loadKg)
         let settings = SettingsKey.analysisSettings()
         let asset = clip.asset
-        let type = setType, name = clip.name
+        let type = setType, name = clip.name, filmed = clip.date ?? Date()
         job = Task {
             do {
                 let analysis = try await Task.detached(priority: .userInitiated) {
@@ -93,7 +89,7 @@ struct SetDetailsView: View {
                     }
                     return try SetAnalyzer.analyze(track: track, input: input, settings: settings)
                 }.value
-                let set = AnalyzedSet(date: Date(), clipName: name, setType: type, analysis: analysis)
+                let set = AnalyzedSet(date: filmed, clipName: name, setType: type, analysis: analysis)
                 model.add(set)
                 progress = nil
                 resultID = set.id

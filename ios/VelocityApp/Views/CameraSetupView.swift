@@ -9,10 +9,6 @@ struct CameraSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var camera = CameraRecorder()
     @AppStorage(SettingsKey.unit) private var unitRaw = WeightUnit.lb.rawValue
-    @AppStorage(SettingsKey.bodyMassKg) private var bodyMassKg = 0.0
-    @AppStorage(SettingsKey.lastExercise) private var exerciseID = "trap_bar_deadlift"
-    @AppStorage(SettingsKey.lastLoadKg) private var loadKg = 60.0
-    @AppStorage(SettingsKey.velocityLossCutoff) private var lossCutoff = 20.0
     @AppStorage(SettingsKey.keepSetVideos) private var keepVideos = false
     @State private var setType: SetType = .working
     @State private var analyzing: VideoTracker.Progress?
@@ -21,7 +17,6 @@ struct CameraSetupView: View {
     @State private var now = Date()
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
-    private var exercise: Exercise { ExerciseCatalog.exercise(id: exerciseID) ?? ExerciseCatalog.all[0] }
     private let ticker = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -170,7 +165,7 @@ struct CameraSetupView: View {
     private var controls: some View {
         VStack(spacing: 10) {
             HStack {
-                Picker("Exercise", selection: $exerciseID) {
+                Picker("Exercise", selection: model.exerciseBinding) {
                     ForEach(ExerciseCatalog.all) { Text($0.name).tag($0.id) }
                 }
                 .pickerStyle(.menu)
@@ -180,7 +175,7 @@ struct CameraSetupView: View {
                 }
                 .pickerStyle(.menu)
             }
-            LoadField(loadKg: $loadKg, unit: unit)
+            LoadField(loadKg: model.loadBinding(model.currentExerciseID), unit: unit)
             if let errorText {
                 Text(errorText).font(.footnote).foregroundStyle(Theme.bad)
             }
@@ -211,9 +206,8 @@ struct CameraSetupView: View {
     }
 
     private func stopAndAnalyze() {
-        let input = SetInput(exercise: exercise, loadKg: loadKg,
-                             bodyMassKg: bodyMassKg > 0 ? bodyMassKg : nil,
-                             velocityLossThresholdPct: lossCutoff > 0 ? lossCutoff : nil)
+        let id = model.currentExerciseID
+        let input = model.setInput(exerciseID: id, loadKg: model.prefs(for: id).loadKg)
         let settings = SettingsKey.analysisSettings()
         let type = setType
         let keep = keepVideos

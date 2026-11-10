@@ -10,6 +10,10 @@ GymAware.
   plate is found (green ring), whether the phone is level, and the frame rate. Press the red
   button to record, press it again to stop; the set is analyzed straight away and the video is
   deleted unless Settings › Save set videos to Photos is on.
+- Milestone 3: sets are saved on the phone. **Today** shows the exercise chips (each exercise
+  remembers its load, target zone and loss cutoff), the next set and the sets done today.
+  **History** lists exercises (best mean velocity at a chosen load over time) and sessions by day.
+  Sets are stored as plate tracks, not videos, so they take little space.
 
 ## Updating to a new version
 

@@ -11,11 +11,13 @@ struct SetResultsView: View {
     @State private var showPeak = false
     @State private var systemPower = false
     @State private var editingRep: EditableRep?
+    @State private var confirmDelete = false
+    @Environment(\.dismiss) private var dismiss
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
     var body: some View {
-        if let set = model.recentSets.first(where: { $0.id == setID }) {
+        if let set = model.set(setID) {
             content(set)
         } else {
             ContentUnavailableView("Set not found", systemImage: "questionmark")
@@ -39,7 +41,7 @@ struct SetResultsView: View {
 
                 if let m {
                     tiles(m)
-                    byRepCard(m)
+                    byRepCard(m, zone: a.input.targetMeanVelocity)
                     if let cutoff = m.velocityLossThresholdPct { lossCard(m, cutoff: cutoff) }
                     repTable(set, m)
                     BetaNote()
@@ -66,6 +68,16 @@ struct SetResultsView: View {
                 }
                 .accessibilityLabel("Export reps as CSV")
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(role: .destructive) { confirmDelete = true } label: { Image(systemName: "trash") }
+                    .accessibilityLabel("Delete set")
+            }
+        }
+        .confirmationDialog("Delete this set?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete set", role: .destructive) {
+                dismiss()
+                model.delete(setID)
+            }
         }
         .sheet(item: $editingRep) { rep in
             RepEditSheet(analysis: a, rep: rep) { updated in
@@ -90,7 +102,7 @@ struct SetResultsView: View {
         }
     }
 
-    private func byRepCard(_ m: SetMetrics) -> some View {
+    private func byRepCard(_ m: SetMetrics, zone: ClosedRange<Double>?) -> some View {
         Card {
             HStack {
                 CardLabel(text: showPeak ? "Peak by rep" : "Mean by rep")
@@ -103,7 +115,16 @@ struct SetResultsView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 130)
             }
-            Chart(m.reps, id: \.rep) { r in
+            Chart {
+                if !showPeak, let zone {
+                    RuleMark(y: .value("Zone low", zone.lowerBound))
+                        .foregroundStyle(Theme.good)
+                        .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                    RuleMark(y: .value("Zone high", zone.upperBound))
+                        .foregroundStyle(Theme.good)
+                        .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                }
+                ForEach(m.reps, id: \.rep) { r in
                 BarMark(x: .value("Rep", String(r.rep)),
                         y: .value("m/s", showPeak ? r.peakVelocity : r.meanVelocity))
                     .foregroundStyle(showPeak ? Theme.warn.opacity(0.8) : Theme.accent)
@@ -111,9 +132,21 @@ struct SetResultsView: View {
                         Text(Fmt.velocity(showPeak ? r.peakVelocity : r.meanVelocity))
                             .font(.caption2.monospacedDigit()).foregroundStyle(Theme.muted)
                     }
+                }
             }
             .chartYAxisLabel("m/s")
             .frame(height: 160)
+            if let zone {
+                HStack {
+                    Text("Target \(Fmt.velocity(zone.lowerBound))–\(Fmt.velocity(zone.upperBound)) m/s")
+                        .font(.caption).foregroundStyle(Theme.muted)
+                    Spacer()
+                    let outside = m.outsideTargetReps
+                    Text(outside.isEmpty ? "All reps in zone" : "Reps \(outside.map(String.init).joined(separator: ", ")) outside")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(outside.isEmpty ? Theme.good : Theme.warn)
+                }
+            }
         }
     }
 
