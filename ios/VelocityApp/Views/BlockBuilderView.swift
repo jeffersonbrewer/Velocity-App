@@ -10,7 +10,7 @@ struct BlockBuilderView: View {
     @State private var program = Program(days: [])
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
-    private let programmable = ExerciseCatalog.all.filter { $0.allowsOneRm && $0.defaultMvt != nil }
+    private let programmable = ExerciseCatalog.all.filter { $0.allowsOneRm }
 
     var body: some View {
         NavigationStack {
@@ -38,17 +38,28 @@ struct BlockBuilderView: View {
                         let t = GoalTemplate.default(day.goal)
                         Text("\(Int(t.pctLow * 100))–\(Int(t.pctHigh * 100))% 1RM · stop at \(Int(t.lossLow))–\(Int(t.lossHigh))% loss · \(t.setsLow)–\(t.setsHigh) sets")
                             .font(.caption).foregroundStyle(Theme.muted)
+                        KnownOneRmField(exerciseID: day.mainExerciseID, unit: unit)
                         if let why = model.programBlocker(day.mainExerciseID) {
                             Text(why).font(.caption).foregroundStyle(Theme.warn)
+                        } else if let orm = model.programOneRm(day.mainExerciseID) {
+                            Text(orm.fromProfile ? "Using your profile's estimated 1RM (\(unit.format(kg: unit.roundedToStep(kg: orm.kg))) \(unit.rawValue)). An entered 1RM is used instead once it's newer than your last profile test."
+                                                 : "Using the 1RM you entered. A new profile test replaces it.")
+                                .font(.caption).foregroundStyle(Theme.muted)
                         }
                         ForEach($day.accessories) { $a in
                             AccessoryEditor(accessory: $a, unit: unit)
                         }
                         .onDelete { day.accessories.remove(atOffsets: $0) }
-                        Button("Add accessory") {
-                            day.accessories.append(AccessoryPlan(name: "", sets: t.accessorySets, repLow: t.accessoryRepLow,
-                                                                 repHigh: t.accessoryRepHigh, loadKg: 0, stepKg: unit.toKg(unit.step)))
+                        Menu("Add accessory") {
+                            ForEach(AccessoryLibrary.options(for: day.mainExerciseID), id: \.self) { name in
+                                Button(name) { day.accessories.append(AccessoryLibrary.plan(name, goal: day.goal, unit: unit)) }
+                            }
+                            Button("Other…") { day.accessories.append(AccessoryLibrary.plan("", goal: day.goal, unit: unit)) }
                         }
+                        Button("Suggest accessories for this goal") {
+                            day.accessories = AccessoryLibrary.defaults(for: day.mainExerciseID, goal: day.goal, unit: unit)
+                        }
+                        .font(.subheadline)
                     } header: { Text(day.name.isEmpty ? "Day" : day.name) } footer: {
                         Text("Accessories progress by double progression: when every set reaches the top of the rep range, the next session adds one load step.")
                     }
@@ -75,7 +86,6 @@ struct BlockBuilderView: View {
                 else {
                     let start = programmable.contains { $0.id == model.currentExerciseID } ? model.currentExerciseID : programmable[0].id
                     program = .starter(goal: .maxStrength, exerciseID: start, daysPerWeek: 2, unit: unit)
-                    for i in program.days.indices { program.days[i].accessories = [] }
                 }
             }
         }
@@ -85,8 +95,9 @@ struct BlockBuilderView: View {
         let names = ["Day A", "Day B", "Day C", "Day D"]
         while program.days.count < n {
             let last = program.days.last
-            program.days.append(ProgramDay(name: names[program.days.count], mainExerciseID: last?.mainExerciseID ?? programmable[0].id,
-                                           goal: last?.goal ?? .maxStrength))
+            let ex = last?.mainExerciseID ?? programmable[0].id, goal = last?.goal ?? .maxStrength
+            program.days.append(ProgramDay(name: names[program.days.count], mainExerciseID: ex, goal: goal,
+                                           accessories: AccessoryLibrary.defaults(for: ex, goal: goal, unit: unit)))
         }
         while program.days.count > n { program.days.removeLast() }
         program.progress.day = min(program.progress.day, max(0, n - 1))
@@ -111,5 +122,18 @@ struct AccessoryEditor: View {
             LoadField(loadKg: $accessory.loadKg, unit: unit)
         }
         .font(.subheadline)
+    }
+}
+
+/// Enter a 1RM tested outside the app, so a lift can be programmed before its first profile test.
+struct KnownOneRmField: View {
+    let exerciseID: String
+    let unit: WeightUnit
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        LoadField(loadKg: Binding(get: { model.prefs(for: exerciseID).knownOneRmKg ?? 0 },
+                                  set: { model.setKnownOneRm(exerciseID, kg: $0) }),
+                  unit: unit, label: "Known 1RM")
     }
 }

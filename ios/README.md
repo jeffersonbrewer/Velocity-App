@@ -33,6 +33,9 @@ GymAware.
   stops the lift at the set count or session rep cap. Two Down sessions in a row start a deload;
   accessories progress when every set reaches the top of the range. All numbers are the
   programming spec's draft values.
+  A lift with a 1RM tested outside the app can be programmed by entering it as **Known 1RM** (block
+  builder or profile); loads then come from it, and velocity targets start after a profile test.
+  Accessories are filled per goal from a list for each main lift and can be changed.
 
 ## Updating to a new version
 

@@ -36,28 +36,30 @@ struct ProgramSessionView: View {
                     .foregroundStyle(Theme.muted)
 
                 // 1. Warm-up and readiness
-                Card {
-                    CardLabel(text: "Warm-up and readiness check")
-                    if let r = plan.readiness, let d = plan.readinessDelta {
-                        HStack {
-                            Pill(text: r.rawValue, color: readinessColor(r))
-                            Text(String(format: "%+.2f m/s vs profile at %@ %@", d, unit.format(kg: plan.readinessSet?.analysis.input.loadKg ?? 0), unit.rawValue))
+                if p.zoneLow != nil {
+                    Card {
+                        CardLabel(text: "Warm-up and readiness check")
+                        if let r = plan.readiness, let d = plan.readinessDelta {
+                            HStack {
+                                Pill(text: r.rawValue, color: readinessColor(r))
+                                Text(String(format: "%+.2f m/s vs profile at %@ %@", d, unit.format(kg: plan.readinessSet?.analysis.input.loadKg ?? 0), unit.rawValue))
+                                    .font(.subheadline).foregroundStyle(Theme.muted)
+                            }
+                            ForEach(p.notes, id: \.self) { Text($0).font(.subheadline) }
+                        } else {
+                            Text("Build up with 1–2 lighter sets, then record 2–3 fast reps at \(unit.format(kg: plan.readinessLoadKg)) \(unit.rawValue) (60% 1RM). Today's load adjusts from it.")
                                 .font(.subheadline).foregroundStyle(Theme.muted)
+                            Button {
+                                model.prepareMainSet(plan, loadKg: plan.readinessLoadKg)
+                                showCamera = true
+                            } label: {
+                                Label("Record the 60% set", systemImage: "video.fill").frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        ForEach(p.notes, id: \.self) { Text($0).font(.subheadline) }
-                    } else {
-                        Text("Build up with 1–2 lighter sets, then record 2–3 fast reps at \(unit.format(kg: plan.readinessLoadKg)) \(unit.rawValue) (60% 1RM). Today's load adjusts from it.")
-                            .font(.subheadline).foregroundStyle(Theme.muted)
-                        Button {
-                            model.prepareMainSet(plan, loadKg: plan.readinessLoadKg)
-                            showCamera = true
-                        } label: {
-                            Label("Record the 60% set", systemImage: "video.fill").frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
                     }
-                }
 
+                }
                 // 2. Main lift
                 Card {
                     HStack {
@@ -73,7 +75,12 @@ struct ProgramSessionView: View {
                             Text("\(unit.format(kg: plan.nextLoadKg)) \(unit.rawValue)").font(.title2.weight(.bold)).monospacedDigit()
                         }
                         if let why = plan.nextLoadReason { Text(why).font(.caption).foregroundStyle(Theme.accent) }
-                        row("Target zone, first rep", "\(Fmt.velocity(p.zoneLow))–\(Fmt.velocity(p.zoneHigh)) m/s")
+                        if p.zoneLow != nil {
+                            row("Target zone, first rep", "\(Fmt.velocity(p.zoneLow))–\(Fmt.velocity(p.zoneHigh)) m/s")
+                        } else {
+                            Text("Loads come from your entered 1RM. Velocity targets, readiness and set-to-set load changes start once you record a profile test for this lift.")
+                                .font(.caption).foregroundStyle(Theme.muted)
+                        }
                         row("Stop the set at", "\(Fmt.percent(p.lossCutoffPct)) loss or \(p.repCapPerSet) reps")
                         row("Rest", "\(Fmt.load(p.restLowMin))–\(Fmt.load(p.restHighMin)) min")
                         row("Session rep cap", "\(plan.setsDone.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +)) of \(p.sessionRepCap)")

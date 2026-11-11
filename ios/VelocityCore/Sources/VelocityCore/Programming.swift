@@ -147,9 +147,10 @@ public struct MainLiftPrescription: Codable, Hashable, Sendable {
     public var week: WeekPlan
     public var plannedLoadKg: Double     // before readiness
     public var loadKg: Double            // after readiness, rounded
-    public var targetVelocity: Double    // profile's mean velocity at loadKg
-    public var zoneLow: Double           // velocity at the heavy end of the week's %1RM range
-    public var zoneHigh: Double          // velocity at the light end
+    // Nil when the 1RM was entered by hand and there's no load-velocity profile yet.
+    public var targetVelocity: Double?   // profile's mean velocity at loadKg
+    public var zoneLow: Double?          // velocity at the heavy end of the week's %1RM range
+    public var zoneHigh: Double?         // velocity at the light end
     public var sets: Int
     public var repCapPerSet: Int
     public var sessionRepCap: Int
@@ -164,7 +165,7 @@ public enum Prescriber {
     /// Convert a week's %1RM into a load and target velocity for this lifter, then adjust for readiness.
     /// - Parameter round: rounds a load in kg to the lifter's load step.
     public static func mainLift(goal: TrainingGoal, template: GoalTemplate, week: WeekPlan, oneRmKg: Double,
-                                line: LoadVelocityLine, readiness: Readiness?, round: (Double) -> Double) -> MainLiftPrescription {
+                                line: LoadVelocityLine?, readiness: Readiness?, round: (Double) -> Double) -> MainLiftPrescription {
         var goal = goal, template = template, week = week
         var notes: [String] = []
         if readiness == .wellDown && !week.isDeload && goal.lighter != goal {
@@ -184,11 +185,11 @@ public enum Prescriber {
         var sets = week.sets + (readiness?.setChange ?? 0)
         if readiness?.setChange ?? 0 != 0 { notes.append("Down day: one set fewer.") }
         sets = max(1, sets)
-        let zoneLow = line.velocity(atLoad: week.pctHigh * oneRmKg * (1 + change))
-        let zoneHigh = line.velocity(atLoad: week.pctLow * oneRmKg * (1 + change))
+        let zoneLow = line?.velocity(atLoad: week.pctHigh * oneRmKg * (1 + change))
+        let zoneHigh = line?.velocity(atLoad: week.pctLow * oneRmKg * (1 + change))
         let sessionCap = (template.sessionRepCapLow + template.sessionRepCapHigh) / 2
         return MainLiftPrescription(goal: goal, week: week, plannedLoadKg: planned, loadKg: load,
-                                    targetVelocity: line.velocity(atLoad: load), zoneLow: zoneLow, zoneHigh: zoneHigh,
+                                    targetVelocity: line?.velocity(atLoad: load), zoneLow: zoneLow, zoneHigh: zoneHigh,
                                     sets: sets, repCapPerSet: template.repCapPerSet, sessionRepCap: sessionCap,
                                     lossCutoffPct: week.lossCutoffPct, restLowMin: template.restLowMin, restHighMin: template.restHighMin,
                                     minLoadKg: planned * 0.95, maxLoadKg: planned * 1.05, notes: notes)
@@ -200,9 +201,10 @@ public enum Prescriber {
                                 stepKg: Double) -> (loadKg: Double, reason: String?) {
         var next = loadKg
         var reason: String?
-        if firstRepMV > p.zoneHigh {
+        guard let zoneLow = p.zoneLow, let zoneHigh = p.zoneHigh else { return (loadKg, nil) }
+        if firstRepMV > zoneHigh {
             next = loadKg + stepKg; reason = "First rep was faster than the zone, so the load goes up."
-        } else if firstRepMV < p.zoneLow {
+        } else if firstRepMV < zoneLow {
             next = loadKg - stepKg; reason = "First rep was slower than the zone, so the load comes down."
         }
         if next > p.maxLoadKg + 1e-6 || next < p.minLoadKg - 1e-6 {

@@ -21,21 +21,43 @@ struct SessionPlan {
 extension AppModel {
     var unit: WeightUnit { WeightUnit(rawValue: UserDefaults.standard.string(forKey: SettingsKey.unit) ?? "lb") ?? .lb }
 
-    /// Why a main lift can't be programmed yet, or nil when its profile is ready.
+    /// The 1RM the program uses: the profile estimate or a hand-entered 1RM, whichever is newer.
+    func programOneRm(_ exerciseID: String) -> (kg: Double, fromProfile: Bool)? {
+        let prof = profile(for: exerciseID)
+        let pr = prefs(for: exerciseID)
+        switch (prof.oneRmKg, pr.knownOneRmKg) {
+        case let (est?, known?):
+            let testDate = prof.testDate ?? .distantPast
+            return (pr.knownOneRmDate ?? .distantPast) > testDate ? (known, false) : (est, true)
+        case let (est?, nil): return (est, true)
+        case let (nil, known?): return (known, false)
+        default: return nil
+        }
+    }
+
+    /// Why a main lift can't be programmed yet, or nil when it has a 1RM.
     func programBlocker(_ exerciseID: String) -> String? {
         let ex = ExerciseCatalog.exercise(id: exerciseID)
-        if ex?.allowsOneRm == false { return "\(ex?.name ?? "This lift") has no dependable 1RM velocity, so it can't be programmed by %1RM yet." }
-        let p = profile(for: exerciseID)
-        if p.line == nil || p.oneRmKg == nil { return "Record a profile test for \(ex?.name ?? "this lift") first: the plan turns %1RM into loads from it." }
+        if ex?.allowsOneRm == false { return "\(ex?.name ?? "This lift") can't be programmed by %1RM." }
+        if programOneRm(exerciseID) == nil {
+            return "Enter a known 1RM for \(ex?.name ?? "this lift"), or record a profile test: the plan turns %1RM into loads from it."
+        }
         return nil
+    }
+
+    func setKnownOneRm(_ exerciseID: String, kg: Double?) {
+        var p = prefs(for: exerciseID)
+        p.knownOneRmKg = kg.flatMap { $0 > 0 ? $0 : nil }
+        p.knownOneRmDate = p.knownOneRmKg == nil ? nil : Date()
+        prefs[exerciseID] = p
     }
 
     /// The plan for today's session, or nil when there's no program or the profile isn't ready.
     func sessionPlan() -> SessionPlan? {
         guard let program, let day = program.currentDay else { return nil }
         let prof = profile(for: day.mainExerciseID)
-        guard let line = prof.line, let orm = prof.oneRmKg, let mvt = prof.mvt else { return nil }
-        _ = mvt
+        guard let orm = programOneRm(day.mainExerciseID)?.kg else { return nil }
+        let line = prof.line
         let u = unit
         let round = { (kg: Double) in u.roundedToStep(kg: kg) }
         let week = program.weekPlan(for: day)
@@ -79,8 +101,8 @@ extension AppModel {
         var p = prefs(for: id)
         p.loadKg = loadKg
         p.lossCutoffPct = plan.prescription.lossCutoffPct
-        p.targetLow = (plan.prescription.zoneLow * 100).rounded() / 100
-        p.targetHigh = (plan.prescription.zoneHigh * 100).rounded() / 100
+        p.targetLow = plan.prescription.zoneLow.map { ($0 * 100).rounded() / 100 }
+        p.targetHigh = plan.prescription.zoneHigh.map { ($0 * 100).rounded() / 100 }
         prefs[id] = p
     }
 

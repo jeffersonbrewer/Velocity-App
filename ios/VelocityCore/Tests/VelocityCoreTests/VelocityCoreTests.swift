@@ -219,7 +219,12 @@ final class ProgrammingTests: XCTestCase {
         let p = Prescriber.mainLift(goal: .maxStrength, template: .default(.maxStrength), week: week, oneRmKg: 170,
                                     line: line, readiness: .normal, round: round)
         XCTAssertEqual(p.loadKg, 145)
-        XCTAssertEqual(p.targetVelocity, 0.46, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(p.targetVelocity), 0.46, accuracy: 0.001)
+        let manual = Prescriber.mainLift(goal: .maxStrength, template: .default(.maxStrength), week: week, oneRmKg: 170,
+                                         line: nil, readiness: nil, round: round)
+        XCTAssertEqual(manual.loadKg, 145)
+        XCTAssertNil(manual.zoneLow)
+        XCTAssertEqual(Prescriber.nextLoad(after: 145, firstRepMV: 0.9, prescription: manual, stepKg: 2.5).loadKg, 145)
         let down = Prescriber.mainLift(goal: .maxStrength, template: .default(.maxStrength), week: week, oneRmKg: 170,
                                        line: line, readiness: .down, round: round)
         XCTAssertEqual(down.loadKg, 137.5)

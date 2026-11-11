@@ -21,6 +21,14 @@ struct ProfileView: View {
                 if let reason = p.retestReason() { retestCard(reason, hasTest: p.lastTestDate != nil) }
                 lineCard(p)
                 if let r = model.readinessToday(for: exerciseID) { readinessCard(r) }
+                if exercise?.allowsOneRm != false {
+                    Card {
+                        CardLabel(text: "1RM tested outside the app")
+                        KnownOneRmField(exerciseID: exerciseID, unit: unit)
+                        Text("Lets the Program use this lift before its first profile test. Whichever is newer, this or your last profile test, sets the program's loads. Leave at 0 if you don't have one.")
+                            .font(.caption).foregroundStyle(Theme.muted)
+                    }
+                }
                 if !p.testSets.isEmpty { testSetsCard(p) }
                 howToCard
             }

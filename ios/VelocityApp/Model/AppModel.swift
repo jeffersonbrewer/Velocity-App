@@ -41,6 +41,8 @@ struct ExercisePrefs: Codable, Equatable {
     var targetHigh: Double?       // m/s
     var lossCutoffPct: Double?    // nil: use the default in Settings
     var editedMvt: Double?        // lifter's replacement for the group-default 1RM velocity, m/s
+    var knownOneRmKg: Double?     // a 1RM the lifter entered by hand (tested outside the app)
+    var knownOneRmDate: Date?
 
     var targetZone: ClosedRange<Double>? {
         guard let lo = targetLow, let hi = targetHigh, lo < hi else { return nil }
