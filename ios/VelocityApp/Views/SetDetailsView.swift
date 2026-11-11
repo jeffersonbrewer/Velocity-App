@@ -109,13 +109,14 @@ struct SetDetailsView: View {
 struct LoadField: View {
     @Binding var loadKg: Double
     let unit: WeightUnit
+    var label = "Load"
 
     var body: some View {
         let shown = Binding<Double>(
             get: { (unit.fromKg(loadKg) * 100).rounded() / 100 },
             set: { loadKg = unit.toKg($0) })
         HStack {
-            Text("Load")
+            Text(label)
             Spacer()
             Button { loadKg = max(0, unit.toKg(shown.wrappedValue - unit.step)) } label: { Image(systemName: "minus") }
                 .buttonStyle(.bordered)

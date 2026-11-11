@@ -15,6 +15,7 @@ struct TodayView: View {
     @State private var errorText: String?
     @State private var showCamera = false
     @State private var editingTargets = false
+    @State private var testing = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
     private var exercise: Exercise { ExerciseCatalog.exercise(id: model.currentExerciseID) ?? ExerciseCatalog.all[0] }
@@ -49,6 +50,7 @@ struct TodayView: View {
             }
             .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
             .sheet(isPresented: $editingTargets) { TargetsSheet(exerciseID: model.currentExerciseID) }
+            .sheet(isPresented: $testing) { ProfileTestSetupView(exerciseID: model.currentExerciseID) }
             .fileImporter(isPresented: $showFiles, allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie]) { result in
                 switch result {
                 case .success(let url):
@@ -158,6 +160,14 @@ struct TodayView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+
+            Button {
+                testing = true
+            } label: {
+                Label("Guided profile test", systemImage: "chart.line.downtrend.xyaxis").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .font(.subheadline)
 
             HStack {
                 PhotosPicker(selection: $pickerItem, matching: .videos, photoLibrary: .shared()) {

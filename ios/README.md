@@ -20,6 +20,10 @@ GymAware.
   the latest test day, estimates 1RM at your 1RM velocity (your slowest Max single, else the
   editable group default), checks readiness from today's first set, and suggests a retest after
   4 weeks. Working sets never change it. Retag an old set with the tag button on its results.
+- **Guided profile test** (button on Today and on the profile): enter a rough 1RM and the app
+  plans 4–6 loads from about 40% to 90% (3, 2, then 1 fast rep), plus an optional max single.
+  The camera stays on for the whole ramp: after each load is analyzed it shows that load's best
+  mean velocity, a rest timer, the next load, and the 1RM so far. Loads can be changed or skipped.
 
 ## Updating to a new version
 

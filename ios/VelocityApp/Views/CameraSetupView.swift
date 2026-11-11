@@ -4,6 +4,8 @@ import SwiftUI
 import VelocityCore
 
 /// Record a set: line up the camera with the live plate and level checks, record, and get results.
+/// With a profile test plan, the camera stays on this screen for the whole ramp: each load is
+/// analyzed and the next one is set up without opening the results.
 struct CameraSetupView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -14,6 +16,10 @@ struct CameraSetupView: View {
     @State private var errorText: String?
     @State private var resultID: UUID?
     @State private var now = Date()
+    @State private var test: ProfileTestPlan?
+    @State private var lastSetEnd: Date?
+
+    init(test: ProfileTestPlan? = nil) { _test = State(initialValue: test) }
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
     private let ticker = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
@@ -26,11 +32,11 @@ struct CameraSetupView: View {
             }
             .background(Theme.background)
             .keyboardDoneButton()
-            .navigationTitle("Record a set")
+            .navigationTitle(test == nil ? "Record a set" : "Profile test")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { camera.stop(); dismiss() }
+                    Button(test == nil ? "Close" : "End test") { camera.stop(); finishTest(); dismiss() }
                         .disabled(isRecording || analyzing != nil)
                 }
             }
@@ -38,6 +44,7 @@ struct CameraSetupView: View {
             .onAppear {
                 UIApplication.shared.isIdleTimerDisabled = true  // keep the screen on between sets
                 camera.start()
+                applyCurrentStep()
             }
             .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
@@ -164,28 +171,158 @@ struct CameraSetupView: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
-            HStack {
-                Picker("Exercise", selection: model.exerciseBinding) {
-                    ForEach(ExerciseCatalog.all) { Text($0.name).tag($0.id) }
-                }
-                .pickerStyle(.menu)
-                Spacer()
-                Picker("Set type", selection: model.nextSetTypeBinding) {
-                    ForEach(SetType.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.menu)
+            if test != nil {
+                testPanel
+            } else {
+                setPickers
+                LoadField(loadKg: model.loadBinding(model.currentExerciseID), unit: unit)
             }
-            LoadField(loadKg: model.loadBinding(model.currentExerciseID), unit: unit)
             if let errorText {
                 Text(errorText).font(.footnote).foregroundStyle(Theme.bad)
             }
-            recordButton
+            if test?.finished == true {
+                Button { finishTest(); camera.stop(); dismiss() } label: {
+                    Text("Done").frame(maxWidth: .infinity).fontWeight(.semibold)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            } else {
+                recordButton
+            }
             if isRecording && camera.droppedFrames > 0 {
                 Text("\(camera.droppedFrames) frames dropped").font(.caption).foregroundStyle(Theme.muted)
             }
         }
         .padding()
         .disabled(analyzing != nil)
+    }
+
+    private var setPickers: some View {
+        HStack {
+            Picker("Exercise", selection: model.exerciseBinding) {
+                ForEach(ExerciseCatalog.all) { Text($0.name).tag($0.id) }
+            }
+            .pickerStyle(.menu)
+            Spacer()
+            Picker("Set type", selection: model.nextSetTypeBinding) {
+                ForEach(SetType.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.menu)
+        }
+    }
+
+    // MARK: Guided profile test
+
+    @ViewBuilder
+    private var testPanel: some View {
+        if let plan = test {
+            let profile = model.profile(for: plan.exerciseID)
+            VStack(alignment: .leading, spacing: 8) {
+                // Loads done so far, with each one's fastest rep.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(Array(plan.steps.enumerated()), id: \.element.id) { i, step in
+                            stepChip(step, current: i == plan.currentIndex)
+                        }
+                    }
+                }
+                if let i = plan.currentIndex {
+                    let step = plan.steps[i]
+                    HStack {
+                        Text(step.isMaxSingle ? "Max single" : "Load \(i + 1) of \(plan.steps.filter { !$0.isMaxSingle }.count)")
+                            .font(.headline)
+                        Text("· \(step.reps) fast rep\(step.reps == 1 ? "" : "s")").foregroundStyle(Theme.muted)
+                        Spacer()
+                        if let end = lastSetEnd, !isRecording {
+                            Text("Rest \(timeString(now.timeIntervalSince(end)))")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(now.timeIntervalSince(end) >= restSeconds(step) ? Theme.good : Theme.muted)
+                        }
+                    }
+                    LoadField(loadKg: stepLoadBinding(i), unit: unit)
+                    HStack {
+                        if plan.recordedCount >= 2, let orm = profile.oneRmKg {
+                            Text("1RM so far: \(unit.format(kg: unit.roundedToStep(kg: orm))) \(unit.rawValue)")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        Spacer()
+                        Button(step.isMaxSingle ? "Skip max single" : "Skip this load") { skip(i) }
+                            .font(.subheadline)
+                            .disabled(isRecording)
+                    }
+                    if nearMax(plan, profile) {
+                        HStack {
+                            Text("That last set was close to your 1RM velocity. You can stop here.")
+                                .font(.caption).foregroundStyle(Theme.warn)
+                            Button("Finish") { skipRemaining() }.font(.caption.weight(.semibold))
+                        }
+                    }
+                } else {
+                    Text("Test complete").font(.headline)
+                    if let orm = profile.oneRmKg {
+                        Text("Estimated 1RM \(unit.format(kg: unit.roundedToStep(kg: orm))) \(unit.rawValue) at \(Fmt.velocity(profile.mvt)) m/s")
+                            .font(.subheadline)
+                    } else if let why = profile.lineProblem {
+                        Text(why).font(.subheadline).foregroundStyle(Theme.muted)
+                    }
+                    Text("The full line is on the exercise's profile.").font(.caption).foregroundStyle(Theme.muted)
+                }
+            }
+        }
+    }
+
+    private func stepChip(_ step: ProfileTestStep, current: Bool) -> some View {
+        VStack(spacing: 1) {
+            Text("\(unit.format(kg: step.loadKg))").font(.caption.weight(.semibold)).monospacedDigit()
+            Text(step.skipped ? "skip" : (step.bestMeanVelocity.map { Fmt.velocity($0) } ?? (step.isMaxSingle ? "max" : "–")))
+                .font(.caption2).monospacedDigit()
+                .foregroundStyle(step.bestMeanVelocity != nil ? Theme.good : Theme.muted)
+        }
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(current ? Theme.accent.opacity(0.25) : Theme.card, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(current ? Theme.accent : Theme.line))
+    }
+
+    private func restSeconds(_ step: ProfileTestStep) -> TimeInterval { step.reps >= 2 ? 120 : 180 }
+
+    private func stepLoadBinding(_ i: Int) -> Binding<Double> {
+        Binding(get: { test?.steps[i].loadKg ?? 0 },
+                set: { v in test?.steps[i].loadKg = max(0, v); applyCurrentStep() })
+    }
+
+    /// The last recorded set's fastest rep was within 0.10 m/s of the 1RM velocity.
+    private func nearMax(_ plan: ProfileTestPlan, _ profile: StrengthProfile) -> Bool {
+        guard let mvt = profile.mvt ?? ExerciseCatalog.exercise(id: plan.exerciseID)?.defaultMvt,
+              let last = plan.steps.last(where: { $0.bestMeanVelocity != nil })?.bestMeanVelocity else { return false }
+        return last <= mvt + 0.10
+    }
+
+    private func skip(_ i: Int) {
+        test?.steps[i].skipped = true
+        applyCurrentStep()
+    }
+
+    private func skipRemaining() {
+        guard var plan = test else { return }
+        for i in plan.steps.indices where !plan.steps[i].done { plan.steps[i].skipped = true }
+        test = plan
+    }
+
+    /// Point the exercise, load and set type at the current step of the test.
+    private func applyCurrentStep() {
+        guard let plan = test else { return }
+        model.currentExerciseID = plan.exerciseID
+        guard let i = plan.currentIndex else { return }
+        let step = plan.steps[i]
+        var p = model.prefs(for: plan.exerciseID)
+        p.loadKg = step.loadKg
+        model.prefs[plan.exerciseID] = p
+        model.nextSetType = step.isMaxSingle ? .maxSingle : .profileTest
+    }
+
+    private func finishTest() {
+        guard test != nil else { return }
+        model.nextSetType = .working
     }
 
     private var recordButton: some View {
@@ -224,9 +361,24 @@ struct CameraSetupView: View {
                         return try SetAnalyzer.analyze(track: track, input: input, settings: settings)
                     }.value
                     let set = AnalyzedSet(date: Date(), clipName: "Recorded set", setType: type, analysis: analysis)
-                    model.add(set)
                     analyzing = nil
-                    resultID = set.id
+                    if var plan = test, let i = plan.currentIndex {
+                        // In a profile test, stay on the camera and move to the next load.
+                        if let m = set.analysis.setMetrics, m.repCount > 0 {
+                            model.add(set)
+                            plan.steps[i].setID = set.id
+                            plan.steps[i].bestMeanVelocity = m.bestMeanVelocity
+                            test = plan
+                            applyCurrentStep()
+                        } else {
+                            errorText = "No reps were found in that set. Check the plate is in view and record this load again."
+                        }
+                        lastSetEnd = Date()
+                        if !(test?.finished ?? true) { camera.start() }
+                    } else {
+                        model.add(set)
+                        resultID = set.id
+                    }
                 } catch {
                     analyzing = nil
                     errorText = error.localizedDescription

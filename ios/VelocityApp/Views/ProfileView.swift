@@ -9,6 +9,7 @@ struct ProfileView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(SettingsKey.unit) private var unitRaw = WeightUnit.lb.rawValue
     @State private var editingMvt = false
+    @State private var testing = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
     private var exercise: Exercise? { ExerciseCatalog.exercise(id: exerciseID) }
@@ -37,6 +38,7 @@ struct ProfileView: View {
             }
         }
         .sheet(isPresented: $editingMvt) { MvtSheet(exerciseID: exerciseID) }
+        .sheet(isPresented: $testing) { ProfileTestSetupView(exerciseID: exerciseID) }
     }
 
     // MARK: Cards
@@ -52,9 +54,9 @@ struct ProfileView: View {
                          : "Record a profile test to see your load-velocity line and estimated 1RM.")
                 .font(.subheadline).foregroundStyle(Theme.muted)
             Button {
-                model.startProfileTest(exerciseID)
+                testing = true
             } label: {
-                Text("Record a profile test").frame(maxWidth: .infinity)
+                Text("Start a guided profile test").frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
         }
@@ -184,7 +186,11 @@ struct ProfileView: View {
             CardLabel(text: "How to test")
             Text("After your warm-up, do 1–3 fast reps at 4–6 loads rising from light to about 85–90% of your max, with full rest. Tag each one Profile test. Finish with a heavy single tagged Max single if you want your own 1RM velocity. Retest every 4 weeks or at the end of a training block.")
                 .font(.subheadline).foregroundStyle(Theme.muted)
-            Text("You can also retag a set you already recorded from the menu on its results.")
+            Button { testing = true } label: {
+                Label("Start a guided profile test", systemImage: "chart.line.downtrend.xyaxis").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            Text("The guided test plans the loads and keeps the camera running from the first load to the last. You can also retag a set you already recorded with the tag button on its results.")
                 .font(.caption).foregroundStyle(Theme.muted)
         }
     }

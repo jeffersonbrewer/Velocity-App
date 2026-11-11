@@ -171,13 +171,6 @@ final class AppModel {
         return (first, r.expected, r.delta, r.reading)
     }
 
-    /// Get ready to record a profile test of an exercise from the Today tab.
-    func startProfileTest(_ id: String) {
-        currentExerciseID = id
-        nextSetType = .profileTest
-        selectedTab = .today
-    }
-
     // MARK: Per-exercise settings
 
     func prefs(for id: String) -> ExercisePrefs {
