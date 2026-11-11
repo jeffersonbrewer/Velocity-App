@@ -26,6 +26,9 @@ struct RootView: View {
             HistoryView()
                 .tabItem { Label("History", systemImage: "chart.line.uptrend.xyaxis") }
                 .tag(AppTab.history)
+            ProgramView()
+                .tabItem { Label("Program", systemImage: "list.bullet.clipboard") }
+                .tag(AppTab.program)
             SettingsView(showsDone: false)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppTab.settings)

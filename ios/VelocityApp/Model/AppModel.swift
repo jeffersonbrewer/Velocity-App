@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import VelocityCore
 
-enum AppTab: Hashable { case today, history, settings }
+enum AppTab: Hashable { case today, history, program, settings }
 
 /// Whether a set counts toward the strength profile.
 enum SetType: String, CaseIterable, Identifiable, Codable {
@@ -60,6 +60,8 @@ final class AppModel {
     /// Type for the next set recorded or analyzed. Stays until changed, so a whole ramp can be tagged.
     var nextSetType: SetType = .working
     var selectedTab: AppTab = .today
+    /// The training block being followed, if any.
+    var program: Program? = ProgramStore.load() { didSet { ProgramStore.save(program) } }
 
     private let store: SetStore
 

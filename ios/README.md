@@ -26,6 +26,13 @@ GymAware.
   mean velocity, a rest timer, the next load, and the 1RM so far. Loads can be changed or skipped.
   From the second load on, the loads still to come are re-planned from the line so far: a lower
   1RM is taken at once (protects against an overestimated guess), a higher one cautiously.
+- Milestone 5: **Program** tab. Build a block (3–10 weeks, 1–4 sessions a week, each day a main
+  lift, a goal and accessories); the last week is a deload followed by a profile test. Each
+  session: record the 60% warm-up for readiness, then the app gives each set's load and target
+  zone from your profile, moves the next load a step by the first rep (within ±5% of plan), and
+  stops the lift at the set count or session rep cap. Two Down sessions in a row start a deload;
+  accessories progress when every set reaches the top of the range. All numbers are the
+  programming spec's draft values.
 
 ## Updating to a new version
 
