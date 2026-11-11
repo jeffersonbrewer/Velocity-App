@@ -205,3 +205,30 @@ public enum ProfileRamp {
         return min(toward, currentKg * 1.10)
     }
 }
+
+/// A load-velocity line learned from ordinary sessions, for lifts programmed from a 1RM entered by
+/// hand. It only supplies velocity targets and readiness; it never changes the 1RM.
+public enum LearnedLine {
+    public struct Point: Sendable {
+        public var date: Date
+        public var loadKg: Double
+        public var bestMeanVelocity: Double
+        public init(date: Date, loadKg: Double, bestMeanVelocity: Double) {
+            self.date = date; self.loadKg = loadKg; self.bestMeanVelocity = bestMeanVelocity
+        }
+    }
+
+    /// Fit from the most recent sessions before `before` (today is left out, so today's sets are
+    /// checked against earlier ones). Needs loads spread over at least 10% of the 1RM and a fit of R² ≥ 0.8.
+    public static func fit(_ points: [Point], oneRmKg: Double, before: Date, sessions: Int = 3,
+                           calendar: Calendar = .current) -> LoadVelocityLine? {
+        let cutoff = calendar.startOfDay(for: before)
+        let earlier = points.filter { $0.date < cutoff && $0.loadKg >= 0.3 * oneRmKg }
+        let days = Set(earlier.map { calendar.startOfDay(for: $0.date) }).sorted(by: >).prefix(sessions)
+        let use = earlier.filter { days.contains(calendar.startOfDay(for: $0.date)) }
+        guard let lo = use.map(\.loadKg).min(), let hi = use.map(\.loadKg).max(), hi - lo >= 0.10 * oneRmKg,
+              let line = try? LoadVelocityLine.fit(loadsKg: use.map(\.loadKg), meanVelocities: use.map(\.bestMeanVelocity)),
+              line.r2 >= 0.8 else { return nil }
+        return line
+    }
+}

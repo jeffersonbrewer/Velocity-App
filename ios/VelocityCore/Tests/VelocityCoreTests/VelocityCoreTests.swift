@@ -290,3 +290,16 @@ final class ProgrammingTests: XCTestCase {
         XCTAssertEqual(a.sets(for: .wellDown), 0)
     }
 }
+
+final class LearnedLineTests: XCTestCase {
+    func testLearnsFromEarlierSessionsOnly() throws {
+        let day = { (d: Double) in Date(timeIntervalSince1970: 1_790_000_000 + d * 86_400) }
+        let mv = { (kg: Double) in 1.62 - 0.008 * kg }
+        var pts = [100.0, 130, 132.5, 135].map { LearnedLine.Point(date: day(0), loadKg: $0, bestMeanVelocity: mv($0)) }
+        XCTAssertNil(LearnedLine.fit(pts, oneRmKg: 170, before: day(0)))        // today only: nothing learned yet
+        let line = try XCTUnwrap(LearnedLine.fit(pts, oneRmKg: 170, before: day(2)))
+        XCTAssertEqual(line.slope, -0.008, accuracy: 1e-9)
+        pts = [130.0, 135].map { LearnedLine.Point(date: day(0), loadKg: $0, bestMeanVelocity: mv($0)) }
+        XCTAssertNil(LearnedLine.fit(pts, oneRmKg: 170, before: day(2)))         // loads too close together
+    }
+}

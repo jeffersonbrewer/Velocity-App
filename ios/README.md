@@ -34,7 +34,9 @@ GymAware.
   accessories progress when every set reaches the top of the range. All numbers are the
   programming spec's draft values.
   A lift with a 1RM tested outside the app can be programmed by entering it as **Known 1RM** (block
-  builder or profile); loads then come from it, and velocity targets start after a profile test.
+  builder or profile); loads then come from it. Velocity targets are learned from the program's
+  own sets (60% warm-up plus working sets, last 3 sessions) from the next session on, or come from
+  a profile test. They never change the entered 1RM; a 5% drift suggests a profile test.
   Accessories are filled per goal from a list for each main lift and can be changed.
 
 ## Updating to a new version

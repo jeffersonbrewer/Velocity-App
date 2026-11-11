@@ -36,30 +36,31 @@ struct ProgramSessionView: View {
                     .foregroundStyle(Theme.muted)
 
                 // 1. Warm-up and readiness
-                if p.zoneLow != nil {
-                    Card {
-                        CardLabel(text: "Warm-up and readiness check")
-                        if let r = plan.readiness, let d = plan.readinessDelta {
-                            HStack {
-                                Pill(text: r.rawValue, color: readinessColor(r))
-                                Text(String(format: "%+.2f m/s vs profile at %@ %@", d, unit.format(kg: plan.readinessSet?.analysis.input.loadKg ?? 0), unit.rawValue))
-                                    .font(.subheadline).foregroundStyle(Theme.muted)
-                            }
-                            ForEach(p.notes, id: \.self) { Text($0).font(.subheadline) }
-                        } else {
-                            Text("Build up with 1–2 lighter sets, then record 2–3 fast reps at \(unit.format(kg: plan.readinessLoadKg)) \(unit.rawValue) (60% 1RM). Today's load adjusts from it.")
+                Card {
+                    CardLabel(text: "Warm-up and readiness check")
+                    if let r = plan.readiness, let d = plan.readinessDelta {
+                        HStack {
+                            Pill(text: r.rawValue, color: readinessColor(r))
+                            Text(String(format: "%+.2f m/s vs profile at %@ %@", d, unit.format(kg: plan.readinessSet?.analysis.input.loadKg ?? 0), unit.rawValue))
                                 .font(.subheadline).foregroundStyle(Theme.muted)
-                            Button {
-                                model.prepareMainSet(plan, loadKg: plan.readinessLoadKg)
-                                showCamera = true
-                            } label: {
-                                Label("Record the 60% set", systemImage: "video.fill").frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
                         }
+                        ForEach(p.notes, id: \.self) { Text($0).font(.subheadline) }
+                    } else if plan.readinessSet != nil {
+                        Label("60% set recorded. Readiness checks start once your velocity targets are learned.", systemImage: "checkmark.circle")
+                            .font(.subheadline).foregroundStyle(Theme.muted)
+                    } else {
+                        Text("Build up with 1–2 lighter sets, then record 2–3 fast reps at \(unit.format(kg: plan.readinessLoadKg)) \(unit.rawValue) (60% 1RM). \(p.zoneLow == nil ? "It's used to learn your velocity targets." : "Today's load adjusts from it.")")
+                            .font(.subheadline).foregroundStyle(Theme.muted)
+                        Button {
+                            model.prepareMainSet(plan, loadKg: plan.readinessLoadKg)
+                            showCamera = true
+                        } label: {
+                            Label("Record the 60% set", systemImage: "video.fill").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
                     }
-
                 }
+
                 // 2. Main lift
                 Card {
                     HStack {
@@ -78,7 +79,7 @@ struct ProgramSessionView: View {
                         if p.zoneLow != nil {
                             row("Target zone, first rep", "\(Fmt.velocity(p.zoneLow))–\(Fmt.velocity(p.zoneHigh)) m/s")
                         } else {
-                            Text("Loads come from your entered 1RM. Velocity targets, readiness and set-to-set load changes start once you record a profile test for this lift.")
+                            Text("Loads come from your entered 1RM. Record today's 60% warm-up and working sets: from your next session the app learns your velocity targets from them, then checks readiness and adjusts loads set to set. A profile test gives them right away.")
                                 .font(.caption).foregroundStyle(Theme.muted)
                         }
                         row("Stop the set at", "\(Fmt.percent(p.lossCutoffPct)) loss or \(p.repCapPerSet) reps")
@@ -92,6 +93,10 @@ struct ProgramSessionView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
+                    }
+                    if plan.lineLearned && p.zoneLow != nil {
+                        Text("Velocity targets are learned from your recent sessions. They never change your 1RM, but if your sets drift 5% or more from it, the app suggests a profile test.")
+                            .font(.caption).foregroundStyle(Theme.muted)
                     }
                     Text("The first rep of each set sets the next load: one step up if it's faster than the zone, one step down if slower, within 5% of the plan.")
                         .font(.caption).foregroundStyle(Theme.muted)

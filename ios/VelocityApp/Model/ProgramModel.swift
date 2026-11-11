@@ -16,6 +16,8 @@ struct SessionPlan {
     var nextLoadKg: Double
     var nextLoadReason: String?
     var doneReason: String?
+    /// True when velocity targets come from recent sessions rather than a profile test.
+    var lineLearned: Bool
 }
 
 extension AppModel {
@@ -33,6 +35,18 @@ extension AppModel {
         case let (nil, known?): return (known, false)
         default: return nil
         }
+    }
+
+    /// The load-velocity line for velocity targets: the profile's, or for a hand-entered 1RM one
+    /// learned from earlier sessions (today left out). Nil until there's enough to fit.
+    func velocityLine(_ exerciseID: String) -> (line: LoadVelocityLine, learned: Bool)? {
+        if let line = profile(for: exerciseID).line { return (line, false) }
+        guard let orm = programOneRm(exerciseID)?.kg else { return nil }
+        let pts = sets.compactMap { s -> LearnedLine.Point? in
+            guard s.exerciseID == exerciseID, let m = s.analysis.setMetrics, m.repCount > 0 else { return nil }
+            return LearnedLine.Point(date: s.date, loadKg: m.loadKg, bestMeanVelocity: m.bestMeanVelocity)
+        }
+        return LearnedLine.fit(pts, oneRmKg: orm, before: Date()).map { ($0, true) }
     }
 
     /// Why a main lift can't be programmed yet, or nil when it has a 1RM.
@@ -57,7 +71,8 @@ extension AppModel {
         guard let program, let day = program.currentDay else { return nil }
         let prof = profile(for: day.mainExerciseID)
         guard let orm = programOneRm(day.mainExerciseID)?.kg else { return nil }
-        let line = prof.line
+        let vl = velocityLine(day.mainExerciseID)
+        let line = vl?.line
         let u = unit
         let round = { (kg: Double) in u.roundedToStep(kg: kg) }
         let week = program.weekPlan(for: day)
@@ -71,9 +86,11 @@ extension AppModel {
         }
         var reading: Readiness?
         var delta: Double?
-        if let m = rSet?.analysis.setMetrics, let r = prof.readiness(loadKg: m.loadKg, bestMeanVelocity: m.bestMeanVelocity) {
-            reading = r.reading; delta = r.delta
+        if let m = rSet?.analysis.setMetrics, let line {
+            let d = m.bestMeanVelocity - line.velocity(atLoad: m.loadKg)
+            reading = Readiness(deltaMetersPerSecond: d); delta = d
         }
+        _ = prof
 
         let p = Prescriber.mainLift(goal: day.goal, template: .default(day.goal), week: week, oneRmKg: orm, line: line,
                                     readiness: reading, round: round)
@@ -90,7 +107,8 @@ extension AppModel {
         let reps = done.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +)
         return SessionPlan(day: day, week: week, oneRmKg: orm, readinessLoadKg: target60, readinessSet: rSet, readiness: reading,
                            readinessDelta: delta, prescription: p, setsDone: Array(done), nextLoadKg: next, nextLoadReason: reason,
-                           doneReason: Prescriber.liftDone(setsDone: done.count, repsDone: reps, prescription: p))
+                           doneReason: Prescriber.liftDone(setsDone: done.count, repsDone: reps, prescription: p),
+                           lineLearned: vl?.learned ?? false)
     }
 
     /// Point the Today screen and camera at a load, with the session's loss cutoff and target zone.
@@ -124,8 +142,8 @@ extension AppModel {
     /// Average change in 1RM that recent working sets imply, when it's large enough to suggest a retest.
     func profileDrift(_ exerciseID: String) -> Double? {
         let prof = profile(for: exerciseID)
-        guard let line = prof.line, let orm = prof.oneRmKg, let mvt = prof.mvt else { return nil }
-        let since = prof.lastTestDate ?? .distantPast
+        guard let line = velocityLine(exerciseID)?.line, let orm = programOneRm(exerciseID)?.kg, let mvt = prof.mvt else { return nil }
+        let since = max(prof.lastTestDate ?? .distantPast, prefs(for: exerciseID).knownOneRmDate ?? .distantPast)
         let checks = sets.filter { $0.exerciseID == exerciseID && $0.setType == .working && $0.date > since }
             .compactMap { s -> ProfileDrift.Check? in
                 guard let mv = s.analysis.setMetrics?.reps.first?.meanVelocity, s.analysis.input.loadKg >= 0.5 * orm else { return nil }
