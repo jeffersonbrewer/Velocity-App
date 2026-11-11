@@ -208,3 +208,80 @@ final class ProfileRampTests: XCTestCase {
         XCTAssertEqual(ProfileRamp.revisedOneRm(currentKg: 110, done: [(60, 0.9)], mvt: 0.25), 110)
     }
 }
+
+final class ProgrammingTests: XCTestCase {
+    // Spec example: 1RM 170 kg, MV = 1.62 - 0.008 x load.
+    let line = LoadVelocityLine(slope: -0.008, intercept: 1.62, r2: 1, loadCount: 5, minLoadKg: 60, maxLoadKg: 150)
+    let round = { (kg: Double) in (kg / 2.5).rounded() * 2.5 }
+
+    func testSpecExampleLoadAndTarget() {
+        let week = WeekPlan(pctLow: 0.85, pctHigh: 0.85, lossCutoffPct: 20, sets: 4, isDeload: false)
+        let p = Prescriber.mainLift(goal: .maxStrength, template: .default(.maxStrength), week: week, oneRmKg: 170,
+                                    line: line, readiness: .normal, round: round)
+        XCTAssertEqual(p.loadKg, 145)
+        XCTAssertEqual(p.targetVelocity, 0.46, accuracy: 0.001)
+        let down = Prescriber.mainLift(goal: .maxStrength, template: .default(.maxStrength), week: week, oneRmKg: 170,
+                                       line: line, readiness: .down, round: round)
+        XCTAssertEqual(down.loadKg, 137.5)
+        XCTAssertEqual(down.sets, 3)
+        let well = Prescriber.mainLift(goal: .maxStrength, template: .default(.maxStrength), week: week, oneRmKg: 170,
+                                       line: line, readiness: .wellDown, round: round)
+        XCTAssertEqual(well.goal, .strengthSpeed)
+    }
+
+    func testBlocksEndWithDeload() {
+        let ms = BlockPlanner.weeks(for: .default(.maxStrength), count: 6)
+        XCTAssertEqual(ms.map(\.pctLow), [0.74, 0.77, 0.80, 0.83, 0.86, 0.70])
+        let power = BlockPlanner.weeks(for: .default(.power), count: 4)
+        XCTAssertEqual(power.count, 4)
+        XCTAssertTrue(power.last!.isDeload)
+        XCTAssertLessThanOrEqual(power.last!.pctHigh, 0.35 + 1e-9)
+        XCTAssertLessThan(power[0].pctMid, power[2].pctMid)
+    }
+
+    func testBetweenSetsCappedAtFivePercent() {
+        let week = WeekPlan(pctLow: 0.84, pctHigh: 0.86, lossCutoffPct: 20, sets: 4, isDeload: false)
+        let p = Prescriber.mainLift(goal: .maxStrength, template: .default(.maxStrength), week: week, oneRmKg: 170,
+                                    line: line, readiness: nil, round: round)
+        XCTAssertEqual(Prescriber.nextLoad(after: 145, firstRepMV: 0.60, prescription: p, stepKg: 2.5).loadKg, 147.5)
+        XCTAssertEqual(Prescriber.nextLoad(after: 152.5, firstRepMV: 0.60, prescription: p, stepKg: 2.5).loadKg, 152.5)
+        XCTAssertEqual(Prescriber.nextLoad(after: 145, firstRepMV: 0.30, prescription: p, stepKg: 2.5).loadKg, 142.5)
+        XCTAssertEqual(Prescriber.nextLoad(after: 145, firstRepMV: 0.46, prescription: p, stepKg: 2.5).loadKg, 145)
+    }
+
+    func testResponsiveDeloadAndSkipAhead() {
+        var b = BlockProgress()
+        b.finishSession(reading: .down, weeks: 6, daysPerWeek: 3)      // week 1 day 1
+        b.finishSession(reading: .wellDown, weeks: 6, daysPerWeek: 3)  // week 1 day 2 -> deload
+        XCTAssertTrue(b.inResponsiveDeload)
+        XCTAssertEqual(b.week, 1); XCTAssertEqual(b.day, 2)
+        b.finishSession(reading: .down, weeks: 6, daysPerWeek: 3)
+        XCTAssertEqual(b.deloadSessionsLeft, 1)
+        b.finishSession(reading: .normal, weeks: 6, daysPerWeek: 3)    // recovered: skip ahead 2 sessions
+        XCTAssertFalse(b.inResponsiveDeload)
+        XCTAssertEqual(b.week, 2); XCTAssertEqual(b.day, 1)
+
+        var late = BlockProgress(); late.week = 4
+        late.finishSession(reading: .down, weeks: 6, daysPerWeek: 2)
+        late.finishSession(reading: .down, weeks: 6, daysPerWeek: 2)
+        XCTAssertEqual(late.week, 6)
+        late.finishSession(reading: nil, weeks: 6, daysPerWeek: 2)
+        late.finishSession(reading: nil, weeks: 6, daysPerWeek: 2)
+        XCTAssertTrue(late.retestDue)
+    }
+
+    func testDriftAndAccessories() {
+        let day = { (d: Double) in Date(timeIntervalSince1970: 1_790_000_000 + d * 86_400) }
+        // Bar moves 0.08 m/s faster than predicted at 145 kg: implied 1RM 180 kg (+5.9%).
+        let fast = (0..<3).map { ProfileDrift.Check(date: day(Double($0 * 2)), loadKg: 145, firstRepMV: 0.54) }
+        XCTAssertEqual(try XCTUnwrap(ProfileDrift.retestSuggested(fast, line: line, mvt: 0.26, oneRmKg: 170)), 10.0 / 170, accuracy: 1e-6)
+        let small = (0..<3).map { ProfileDrift.Check(date: day(Double($0 * 2)), loadKg: 145, firstRepMV: 0.50) }
+        XCTAssertNil(ProfileDrift.retestSuggested(small, line: line, mvt: 0.26, oneRmKg: 170))
+
+        let a = AccessoryPlan(name: "RDL", sets: 3, repLow: 8, repHigh: 12, loadKg: 60, stepKg: 2.5)
+        XCTAssertEqual(a.progressed(repsPerSet: [12, 12, 12]).loadKg, 62.5)
+        XCTAssertEqual(a.progressed(repsPerSet: [12, 11, 12]).loadKg, 60)
+        XCTAssertEqual(a.sets(for: .down), 2)
+        XCTAssertEqual(a.sets(for: .wellDown), 0)
+    }
+}

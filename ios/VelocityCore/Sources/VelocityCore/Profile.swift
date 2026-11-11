@@ -75,7 +75,7 @@ public enum MvtSource: Hashable, Sendable {
 
 /// Readiness from today's first set compared with what the profile predicts at that load.
 /// Bands are the draft values from the programming spec.
-public enum Readiness: String, CaseIterable, Sendable {
+public enum Readiness: String, CaseIterable, Codable, Sendable {
     case veryGood = "Very good", good = "Good", normal = "Normal", slightlyDown = "Slightly down",
          down = "Down", wellDown = "Well down"
 
