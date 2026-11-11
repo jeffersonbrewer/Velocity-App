@@ -18,6 +18,7 @@ struct CameraSetupView: View {
     @State private var now = Date()
     @State private var test: ProfileTestPlan?
     @State private var lastSetEnd: Date?
+    @State private var adjustNote: String?
 
     init(test: ProfileTestPlan? = nil) { _test = State(initialValue: test) }
 
@@ -239,7 +240,12 @@ struct CameraSetupView: View {
                                 .foregroundStyle(now.timeIntervalSince(end) >= restSeconds(step) ? Theme.good : Theme.muted)
                         }
                     }
-                    LoadField(loadKg: stepLoadBinding(i), unit: unit)
+                    Text("Load the bar to \(unit.format(kg: step.loadKg)) \(unit.rawValue)")
+                        .font(.title3.weight(.bold))
+                    LoadField(loadKg: stepLoadBinding(i), unit: unit, label: "Change load")
+                    if let adjustNote {
+                        Text(adjustNote).font(.caption).foregroundStyle(Theme.accent)
+                    }
                     HStack {
                         if plan.recordedCount >= 2, let orm = profile.oneRmKg {
                             Text("1RM so far: \(unit.format(kg: unit.roundedToStep(kg: orm))) \(unit.rawValue)")
@@ -287,7 +293,7 @@ struct CameraSetupView: View {
 
     private func stepLoadBinding(_ i: Int) -> Binding<Double> {
         Binding(get: { test?.steps[i].loadKg ?? 0 },
-                set: { v in test?.steps[i].loadKg = max(0, v); applyCurrentStep() })
+                set: { v in test?.steps[i].loadKg = max(0, v); test?.steps[i].edited = true; applyCurrentStep() })
     }
 
     /// The last recorded set's fastest rep was within 0.10 m/s of the 1RM velocity.
@@ -368,6 +374,12 @@ struct CameraSetupView: View {
                             model.add(set)
                             plan.steps[i].setID = set.id
                             plan.steps[i].bestMeanVelocity = m.bestMeanVelocity
+                            let ex = ExerciseCatalog.exercise(id: plan.exerciseID)
+                            let mvt = model.profile(for: plan.exerciseID).mvt ?? model.prefs(for: plan.exerciseID).editedMvt ?? ex?.defaultMvt
+                            if plan.adapt(mvt: (ex?.allowsOneRm ?? true) ? mvt : nil, unit: unit) {
+                                let lower = plan.planKg < plan.guessKg
+                                adjustNote = "Next loads adjusted: so far your 1RM looks closer to \(unit.format(kg: unit.roundedToStep(kg: plan.planKg))) \(unit.rawValue)\(lower ? " than your guess" : "")."
+                            }
                             test = plan
                             applyCurrentStep()
                         } else {

@@ -24,6 +24,8 @@ GymAware.
   plans 4–6 loads from about 40% to 90% (3, 2, then 1 fast rep), plus an optional max single.
   The camera stays on for the whole ramp: after each load is analyzed it shows that load's best
   mean velocity, a rest timer, the next load, and the 1RM so far. Loads can be changed or skipped.
+  From the second load on, the loads still to come are re-planned from the line so far: a lower
+  1RM is taken at once (protects against an overestimated guess), a higher one cautiously.
 
 ## Updating to a new version
 

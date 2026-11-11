@@ -45,7 +45,7 @@ struct ProfileTestSetupView: View {
                             }
                         }
                     } header: { Text("Plan") } footer: {
-                        Text("Lift every rep as fast as you can, with 2–3 minutes rest between loads. Change any load to match the plates you have.")
+                        Text("Lift every rep as fast as you can, with 2–3 minutes rest between loads. From the second load on, the app re-plans the loads still to come from how fast the bar moved, so a high guess gets lowered before the heavy sets. A load you change here stays as you set it.")
                     }
                 }
 
@@ -76,7 +76,7 @@ struct ProfileTestSetupView: View {
     }
 
     private func loadBinding(_ i: Int) -> Binding<Double> {
-        Binding(get: { plan?.steps[i].loadKg ?? 0 }, set: { plan?.steps[i].loadKg = $0 })
+        Binding(get: { plan?.steps[i].loadKg ?? 0 }, set: { plan?.steps[i].loadKg = $0; plan?.steps[i].edited = true })
     }
 
     private func rebuild() {

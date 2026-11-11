@@ -190,3 +190,21 @@ final class ProfileTests: XCTestCase {
         XCTAssertFalse(ExerciseCatalog.exercise(id: "power_clean")!.allowsOneRm)
     }
 }
+
+final class ProfileRampTests: XCTestCase {
+    /// True 1RM 125 kg (MV = 1.6 - 0.0108 x load, MVT 0.25); the lifter guessed 136 kg (300 lb).
+    func testOverestimateIsCutAtOnce() {
+        let mv = { (kg: Double) in 1.6 - 0.0108 * kg }
+        let done = [54.0, 68].map { (loadKg: $0, mv: mv($0)) }
+        XCTAssertEqual(ProfileRamp.revisedOneRm(currentKg: 136, done: done, mvt: 0.25), 125, accuracy: 0.01)
+    }
+
+    func testUnderestimateIsRaisedCautiously() {
+        let mv = { (kg: Double) in 1.6 - 0.0108 * kg }
+        let two = [44.0, 56].map { (loadKg: $0, mv: mv($0)) }
+        XCTAssertEqual(ProfileRamp.revisedOneRm(currentKg: 110, done: two, mvt: 0.25), 117.5, accuracy: 0.01)
+        let three = [44.0, 56, 72].map { (loadKg: $0, mv: mv($0)) }
+        XCTAssertEqual(ProfileRamp.revisedOneRm(currentKg: 110, done: three, mvt: 0.25), 121, accuracy: 0.01)
+        XCTAssertEqual(ProfileRamp.revisedOneRm(currentKg: 110, done: [(60, 0.9)], mvt: 0.25), 110)
+    }
+}

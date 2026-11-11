@@ -179,3 +179,29 @@ public struct StrengthProfile: Sendable {
         return (expected, d, Readiness(deltaMetersPerSecond: d))
     }
 }
+
+/// Adjusts a profile-test ramp to how the lifter is actually moving.
+public enum ProfileRamp {
+    /// The 1RM to plan the remaining loads from, after the loads recorded so far.
+    ///
+    /// The guess is only trusted until the bar says otherwise. From two recorded loads a line is
+    /// fitted and read at the 1RM velocity. A lower estimate is taken at once, so an overestimated
+    /// guess never puts too much on the bar. A higher one is taken cautiously, because a line from
+    /// light loads extends a long way: halfway from the guess with two loads, in full from three,
+    /// and never more than 10% above the current plan in one step.
+    /// - Parameters:
+    ///   - currentKg: the 1RM the remaining loads are planned from now.
+    ///   - done: (load, best mean velocity) for each load recorded in this test.
+    ///   - mvt: the 1RM velocity, m/s.
+    public static func revisedOneRm(currentKg: Double, done: [(loadKg: Double, mv: Double)], mvt: Double) -> Double {
+        guard done.count >= 2,
+              let line = try? LoadVelocityLine.fit(loadsKg: done.map(\.loadKg), meanVelocities: done.map(\.mv)) else {
+            return currentKg
+        }
+        let fitted = line.load(atVelocity: mvt)
+        guard fitted.isFinite, fitted > (done.map(\.loadKg).max() ?? 0) else { return currentKg }
+        if fitted <= currentKg { return fitted }
+        let toward = done.count == 2 ? (currentKg + fitted) / 2 : fitted
+        return min(toward, currentKg * 1.10)
+    }
+}
