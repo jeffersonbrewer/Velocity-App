@@ -233,10 +233,21 @@ public struct AccessoryPlan: Codable, Hashable, Identifiable, Sendable {
     public var repHigh: Int
     public var loadKg: Double
     public var stepKg: Double
+    /// The library exercise this slot uses (nil: typed by hand).
+    public var exerciseID: String?
+    /// Reps in reserve to stop each set at (nil: 2).
+    public var targetRIR: Int?
 
-    public init(name: String, sets: Int, repLow: Int, repHigh: Int, loadKg: Double, stepKg: Double) {
+    public init(name: String, sets: Int, repLow: Int, repHigh: Int, loadKg: Double, stepKg: Double,
+                exerciseID: String? = nil, targetRIR: Int? = nil) {
         self.name = name; self.sets = sets; self.repLow = repLow; self.repHigh = repHigh; self.loadKg = loadKg; self.stepKg = stepKg
+        self.exerciseID = exerciseID; self.targetRIR = targetRIR
     }
+
+    public var rir: Int { targetRIR ?? 2 }
+    public var exercise: AccessoryExercise? { exerciseID.flatMap(AccessoryLibraryData.exercise(id:)) }
+    /// Reps the load is chosen for: the middle of the range.
+    public var targetReps: Int { (repLow + repHigh) / 2 }
 
     /// Today's sets after readiness: one fewer on a Down day, none on a Well down day.
     public func sets(for readiness: Readiness?) -> Int {
@@ -247,6 +258,34 @@ public struct AccessoryPlan: Codable, Hashable, Identifiable, Sendable {
         }
     }
 
+    /// The next session's plan from today's sets.
+    ///
+    /// With reps in reserve logged, each set gives an estimated rep max (Epley with RIR:
+    /// load × (1 + (reps + RIR) / 30)); the best one sets the load for the middle of the rep range
+    /// at the target RIR, kept within ±15% per session and rounded by `round`. Without RIR, or for
+    /// unloaded work, it falls back to double progression.
+    public func next(after done: [AccessorySet], round: (Double) -> Double) -> (plan: AccessoryPlan, note: String?) {
+        let valid = done.filter { $0.reps > 0 }
+        guard !valid.isEmpty else { return (self, nil) }
+        if loadKg <= 0 {
+            if valid.count >= sets && valid.allSatisfy({ $0.reps >= repHigh && ($0.rir ?? rir) >= rir }) {
+                return (self, "\(name): top of the range on every set. Add load or a harder variation.")
+            }
+            return (self, nil)
+        }
+        let withRIR = valid.filter { $0.rir != nil }
+        guard withRIR.count == valid.count else {
+            let p = progressed(repsPerSet: valid.map(\.reps))
+            return (p, p.loadKg != loadKg ? "\(name): every set reached \(repHigh), so one step up." : nil)
+        }
+        let e = withRIR.map { AccessorySet.repMax(loadKg: loadKg, reps: $0.reps, rir: $0.rir!) }.max()!
+        var target = round(e / (1 + Double(targetReps + rir) / 30))
+        target = min(max(target, round(loadKg * 0.85)), round(loadKg * 1.15))
+        var p = self
+        p.loadKg = target
+        return (p, target == loadKg ? nil : "\(name): next load set from your reps and RIR.")
+    }
+
     /// Double progression: when every set reached the top of the range, add one load step.
     public func progressed(repsPerSet: [Int]) -> AccessoryPlan {
         guard !repsPerSet.isEmpty, repsPerSet.count >= sets, repsPerSet.allSatisfy({ $0 >= repHigh }) else { return self }
@@ -254,6 +293,19 @@ public struct AccessoryPlan: Codable, Hashable, Identifiable, Sendable {
         next.loadKg += stepKg
         return next
     }
+}
+
+/// One logged accessory set.
+public struct AccessorySet: Codable, Hashable, Sendable {
+    public var reps: Int
+    public var rir: Int?
+    public init(reps: Int, rir: Int?) { self.reps = reps; self.rir = rir }
+
+    /// Estimated 1-rep max from a set taken to `rir` reps in reserve (Epley).
+    public static func repMax(loadKg: Double, reps: Int, rir: Int) -> Double { loadKg * (1 + Double(reps + rir) / 30) }
+
+    /// The load to start with when a lifter knows a load they can do for some reps.
+    public static func load(forReps reps: Int, rir: Int, repMaxKg: Double) -> Double { repMaxKg / (1 + Double(reps + rir) / 30) }
 }
 
 // MARK: Block progress, responsive deloads and retests

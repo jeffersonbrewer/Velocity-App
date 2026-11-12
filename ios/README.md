@@ -37,7 +37,11 @@ GymAware.
   builder or profile); loads then come from it. Velocity targets are learned from the program's
   own sets (60% warm-up plus working sets, last 3 sessions) from the next session on, or come from
   a profile test. They never change the entered 1RM; a 5% drift suggests a profile test.
-  Accessories are filled per goal from a list for each main lift and can be changed.
+  Accessories come from a library of about 60 exercises (including combos) tagged by movement
+  pattern. Suggestions put one on the main lift's pattern and fill the rest from the patterns the
+  week covers least; the builder shows weekly pattern balance and flags gaps. Each accessory set
+  logs reps and RIR (prefilled with the target); the next load is set from them (Epley with RIR,
+  ±15% per session), with double progression as the fallback.
 
 ## Updating to a new version
 

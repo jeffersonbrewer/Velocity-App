@@ -47,11 +47,8 @@ struct Program: Codable, Hashable {
         let t = GoalTemplate.default(goal)
         let names = ["Day A", "Day B", "Day C", "Day D"]
         _ = t
-        let days = (0..<daysPerWeek).map { i in
-            ProgramDay(name: names[i], mainExerciseID: exerciseID, goal: goal,
-                       accessories: AccessoryLibrary.defaults(for: exerciseID, goal: goal, unit: unit))
-        }
-        return Program(days: days)
+        let days = (0..<daysPerWeek).map { i in ProgramDay(name: names[i], mainExerciseID: exerciseID, goal: goal) }
+        return Program(days: AccessoryLibrary.fillAll(days, unit: unit))
     }
 }
 
@@ -74,55 +71,51 @@ enum ProgramStore {
     }
 }
 
-/// Related but more general accessory work for each main lift, used to fill a day's accessory slots.
+/// Builds accessory slots from the pattern-tagged library in VelocityCore.
 enum AccessoryLibrary {
-    static func options(for mainLiftID: String) -> [String] {
-        switch mainLiftID {
-        case "trap_bar_deadlift", "deadlift", "sumo_deadlift":
-            return ["Romanian deadlift", "Bulgarian split squat", "Back extension", "Hamstring curl", "Barbell row", "Plank"]
-        case "back_squat", "front_squat", "box_squat":
-            return ["Bulgarian split squat", "Romanian deadlift", "Leg press", "Walking lunge", "Hamstring curl", "Plank"]
-        case "bench_press":
-            return ["Dumbbell bench press", "Barbell row", "Weighted dip", "Triceps extension", "Face pull"]
-        case "overhead_press":
-            return ["Dumbbell shoulder press", "Pull-up", "Lateral raise", "Triceps extension", "Face pull"]
-        case "hip_thrust":
-            return ["Romanian deadlift", "Bulgarian split squat", "Hamstring curl", "Back extension"]
-        case "prone_bench_pull", "pendlay_row", "pull_up":
-            return ["Dumbbell row", "Lat pulldown", "Face pull", "Biceps curl", "Barbell row"]
-        case "dip":
-            return ["Dumbbell bench press", "Triceps extension", "Push-up", "Dumbbell row"]
-        case "power_clean":
-            return ["Romanian deadlift", "Front squat", "Push press", "Box jump"]
-        default:
-            return ["Romanian deadlift", "Bulgarian split squat", "Dumbbell row", "Plank"]
-        }
+    /// Load step for an implement, in kg: dumbbells per hand by the usual step, kettlebells by bell size.
+    static func stepKg(_ e: AccessoryExercise?, unit: WeightUnit) -> Double {
+        if e?.equipment == .kettlebell { return unit == .kg ? 4 : unit.toKg(5) }
+        return unit.toKg(unit.step)
     }
 
-    /// Jumps and throws that go first on power days.
-    static func powerOptions(for mainLiftID: String) -> [String] {
-        switch mainLiftID {
-        case "bench_press", "overhead_press", "dip": return ["Medicine ball chest pass"]
-        case "prone_bench_pull", "pendlay_row", "pull_up": return ["Medicine ball slam"]
-        default: return ["Box jump"]
-        }
-    }
-
-    static func plan(_ name: String, goal: TrainingGoal, unit: WeightUnit) -> AccessoryPlan {
+    static func plan(_ e: AccessoryExercise?, name: String? = nil, goal: TrainingGoal, unit: WeightUnit) -> AccessoryPlan {
         let t = GoalTemplate.default(goal)
-        return AccessoryPlan(name: name, sets: t.accessorySets, repLow: t.accessoryRepLow, repHigh: t.accessoryRepHigh,
-                             loadKg: 0, stepKg: unit.toKg(unit.step))
+        var a = AccessoryPlan(name: name ?? e?.name ?? "", sets: t.accessorySets, repLow: t.accessoryRepLow, repHigh: t.accessoryRepHigh,
+                              loadKg: 0, stepKg: stepKg(e, unit: unit), exerciseID: e?.id, targetRIR: 2)
+        if e?.ballistic == true { a.repLow = 3; a.repHigh = 6; a.targetRIR = 3 }
+        return a
     }
 
-    /// The goal's number of slots, filled from the main lift's list (power: a jump or throw first).
-    static func defaults(for mainLiftID: String, goal: TrainingGoal, unit: WeightUnit) -> [AccessoryPlan] {
-        let slots = GoalTemplate.default(goal).accessorySlots
-        var names = options(for: mainLiftID)
-        if goal == .power { names = powerOptions(for: mainLiftID) + names }
-        return names.prefix(slots).map { n in
-            var a = plan(n, goal: goal, unit: unit)
-            if powerOptions(for: mainLiftID).contains(n) { a.repLow = 3; a.repHigh = 5 }
-            return a
+    /// Patterns a day trains: its main lift and its accessories.
+    static func patterns(of day: ProgramDay) -> [MovementPattern] {
+        [AccessoryLibraryData.pattern(ofMainLift: day.mainExerciseID)] + day.accessories.flatMap { $0.exercise?.patterns ?? [] }
+    }
+
+    /// Fill a day's slots, complementing the rest of the week.
+    static func fill(_ day: ProgramDay, in days: [ProgramDay], unit: WeightUnit) -> [AccessoryPlan] {
+        let others = days.filter { $0.id != day.id }
+        let used = Set(others.flatMap { $0.accessories.compactMap(\.exerciseID) })
+        return AccessoryLibraryData.fill(mainLiftID: day.mainExerciseID, goal: day.goal, otherDays: others.map(patterns(of:)),
+                                         usedElsewhere: used).map { plan($0, goal: day.goal, unit: unit) }
+    }
+
+    /// Fill every day in order, each complementing the days before it.
+    static func fillAll(_ days: [ProgramDay], unit: WeightUnit) -> [ProgramDay] {
+        var out = days
+        for i in out.indices {
+            out[i].accessories = []
+        }
+        for i in out.indices {
+            out[i].accessories = fill(out[i], in: out, unit: unit)
+        }
+        return out
+    }
+
+    static func balance(_ days: [ProgramDay]) -> [PatternBalance.Day] {
+        days.map { d in
+            PatternBalance.Day(name: d.name, main: AccessoryLibraryData.pattern(ofMainLift: d.mainExerciseID),
+                               accessories: d.accessories.flatMap { $0.exercise?.patterns ?? [] })
         }
     }
 }

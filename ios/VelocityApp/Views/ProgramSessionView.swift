@@ -7,7 +7,8 @@ struct ProgramSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKey.unit) private var unitRaw = WeightUnit.lb.rawValue
     @State private var showCamera = false
-    @State private var accessoryReps: [UUID: [Int]] = [:]
+    @State private var accessoryLog: [UUID: [AccessorySet]] = [:]
+    @State private var accessoryLoad: [UUID: Double] = [:]
     @State private var confirmFinish = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
@@ -114,17 +115,12 @@ struct ProgramSessionView: View {
                             Text("Skipped today: readiness is well down.").font(.subheadline).foregroundStyle(Theme.muted)
                         }
                         ForEach(accessories) { a in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("\(a.name) · \(a.sets(for: plan.readiness)) × \(a.repLow)–\(a.repHigh)\(a.loadKg > 0 ? " @ \(unit.format(kg: a.loadKg)) \(unit.rawValue)" : "")")
-                                    .font(.subheadline.weight(.semibold))
-                                ForEach(0..<a.sets(for: plan.readiness), id: \.self) { i in
-                                    Stepper(value: repsBinding(a, i), in: 0...40) {
-                                        Text("Set \(i + 1): \(accessoryReps[a.id]?[safe: i] ?? 0) reps").font(.subheadline).monospacedDigit()
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 2)
+                            AccessorySessionRow(accessory: a, sets: a.sets(for: plan.readiness), unit: unit,
+                                                log: Binding(get: { accessoryLog[a.id] ?? [] }, set: { accessoryLog[a.id] = $0 }),
+                                                loadKg: Binding(get: { accessoryLoad[a.id] ?? a.loadKg }, set: { accessoryLoad[a.id] = $0 }))
                         }
+                        Text("Log reps and reps in reserve (RIR) for each set. The next session's load is set from them.")
+                            .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }
 
@@ -135,25 +131,15 @@ struct ProgramSessionView: View {
                 .controlSize(.large)
                 .confirmationDialog("Finish today's session?", isPresented: $confirmFinish, titleVisibility: .visible) {
                     Button("Finish session") {
-                        model.finishSession(plan, accessoryReps: accessoryReps)
+                        model.finishSession(plan, accessoryLog: accessoryLog, loadsUsed: accessoryLoad)
                         dismiss()
                     }
                 } message: {
-                    Text("The program moves to the next session. Accessories where every set reached the top of the range go up one load step.")
+                    Text("The program moves to the next session, and each accessory's next load is set from today's reps and RIR.")
                 }
             }
             .padding()
         }
-    }
-
-    private func repsBinding(_ a: AccessoryPlan, _ i: Int) -> Binding<Int> {
-        Binding(get: { accessoryReps[a.id]?[safe: i] ?? 0 },
-                set: { v in
-                    var reps = accessoryReps[a.id] ?? Array(repeating: 0, count: a.sets)
-                    while reps.count <= i { reps.append(0) }
-                    reps[i] = v
-                    accessoryReps[a.id] = reps
-                })
     }
 
     private func row(_ label: String, _ value: String) -> some View {
@@ -163,4 +149,61 @@ struct ProgramSessionView: View {
 
 extension Array {
     subscript(safe i: Int) -> Element? { indices.contains(i) ? self[i] : nil }
+}
+
+/// One accessory in today's session: the prescription, the load used, and reps and RIR per set.
+struct AccessorySessionRow: View {
+    let accessory: AccessoryPlan
+    let sets: Int
+    let unit: WeightUnit
+    @Binding var log: [AccessorySet]
+    @Binding var loadKg: Double
+
+    var body: some View {
+        let e = accessory.exercise
+        let takesLoad = e?.takesLoad ?? (accessory.loadKg > 0)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(accessory.name).font(.subheadline.weight(.semibold))
+            Text("\(sets) × \(accessory.repLow)–\(accessory.repHigh), stop at \(accessory.rir) RIR")
+                .font(.caption).foregroundStyle(Theme.muted)
+            if takesLoad {
+                if accessory.loadKg <= 0 {
+                    Text("First time: pick a load you'd get about \(accessory.targetReps) reps with \(accessory.rir) in reserve, and enter it here.")
+                        .font(.caption).foregroundStyle(Theme.accent)
+                }
+                LoadField(loadKg: $loadKg, unit: unit, label: e?.equipment == .dumbbell ? "Load (each)" : "Load")
+            }
+            ForEach(0..<sets, id: \.self) { i in
+                HStack {
+                    Text("Set \(i + 1)").foregroundStyle(Theme.muted)
+                    Stepper("\(entry(i).reps) reps", value: repsBinding(i), in: 0...50)
+                        .monospacedDigit()
+                    Picker("RIR", selection: rirBinding(i)) {
+                        ForEach(0...5, id: \.self) { Text("RIR \($0)").tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .fixedSize()
+                }
+                .font(.subheadline)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func entry(_ i: Int) -> AccessorySet { log[safe: i] ?? AccessorySet(reps: 0, rir: accessory.rir) }
+
+    private func update(_ i: Int, _ change: (inout AccessorySet) -> Void) {
+        var l = log
+        while l.count <= i { l.append(AccessorySet(reps: 0, rir: accessory.rir)) }
+        change(&l[i])
+        log = l
+    }
+
+    private func repsBinding(_ i: Int) -> Binding<Int> {
+        Binding(get: { entry(i).reps }, set: { v in update(i) { $0.reps = v } })
+    }
+
+    private func rirBinding(_ i: Int) -> Binding<Int> {
+        Binding(get: { entry(i).rir ?? accessory.rir }, set: { v in update(i) { $0.rir = v } })
+    }
 }

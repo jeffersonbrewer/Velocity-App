@@ -303,3 +303,37 @@ final class LearnedLineTests: XCTestCase {
         XCTAssertNil(LearnedLine.fit(pts, oneRmKg: 170, before: day(2)))         // loads too close together
     }
 }
+
+final class AccessoryTests: XCTestCase {
+    let round = { (kg: Double) in (kg / 2.5).rounded() * 2.5 }
+
+    func testRIRSetsNextLoad() {
+        let a = AccessoryPlan(name: "DB bench", sets: 3, repLow: 8, repHigh: 12, loadKg: 20, stepKg: 2.5, targetRIR: 2)
+        // 12 reps with 4 in reserve at 20 kg: rep max 30.7 kg; 10 reps at RIR 2 -> 24 kg, capped at +15% (22.5).
+        XCTAssertEqual(a.next(after: [AccessorySet(reps: 12, rir: 4)], round: round).plan.loadKg, 22.5)
+        // 8 reps at 0 RIR: rep max 25.3 kg -> 10 at RIR 2 = 19.0 -> 20 kg after rounding... stays or drops.
+        XCTAssertLessThanOrEqual(a.next(after: [AccessorySet(reps: 8, rir: 0)], round: round).plan.loadKg, 20)
+        // Exactly on target (10 reps at RIR 2) keeps the load.
+        XCTAssertEqual(a.next(after: [AccessorySet(reps: 10, rir: 2)], round: round).plan.loadKg, 20)
+        // No RIR: double progression.
+        XCTAssertEqual(a.next(after: [12, 12, 12].map { AccessorySet(reps: $0, rir: nil) }, round: round).plan.loadKg, 22.5)
+    }
+
+    func testFillIsHolisticAndBalanced() {
+        let bench = AccessoryLibraryData.fill(mainLiftID: "bench_press", goal: .maxStrength, otherDays: [], usedElsewhere: [])
+        XCTAssertEqual(bench.count, 3)
+        XCTAssertTrue(bench[0].patterns.contains(.horizontalPush))
+        let covered = Set(bench.flatMap(\.patterns).map(\.family))
+        XCTAssertTrue(covered.contains("Hinge") || covered.contains("Squat / lunge"))
+        print("BENCH DAY:", bench.map(\.name))
+        let trap = AccessoryLibraryData.fill(mainLiftID: "trap_bar_deadlift", goal: .maxStrength,
+                                             otherDays: [[.horizontalPush] + bench.flatMap(\.patterns)], usedElsewhere: Set(bench.map(\.id)))
+        print("TRAP DAY:", trap.map(\.name))
+        let power = AccessoryLibraryData.fill(mainLiftID: "back_squat", goal: .power, otherDays: [], usedElsewhere: [])
+        print("POWER SQUAT DAY:", power.map(\.name))
+        XCTAssertTrue(power[0].ballistic)
+        let flags = PatternBalance.flags([PatternBalance.Day(name: "A", main: .horizontalPush, accessories: [.verticalPush]),
+                                          PatternBalance.Day(name: "B", main: .verticalPush, accessories: [])])
+        XCTAssertTrue(flags.contains { $0.contains("Pushing outweighs") })
+    }
+}

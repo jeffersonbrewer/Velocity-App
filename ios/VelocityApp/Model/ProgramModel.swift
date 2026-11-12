@@ -124,15 +124,20 @@ extension AppModel {
         prefs[id] = p
     }
 
-    /// Close today's session: advance the block, and progress accessories whose every set hit the top of the range.
-    func finishSession(_ plan: SessionPlan, accessoryReps: [UUID: [Int]]) {
+    /// Close today's session: advance the block, and set each accessory's next load from its reps and RIR.
+    func finishSession(_ plan: SessionPlan, accessoryLog: [UUID: [AccessorySet]], loadsUsed: [UUID: Double]) {
         guard var program else { return }
         let dayIndex = program.progress.day
         program.log.append(ProgramSessionLog(date: Date(), week: program.progress.week, dayIndex: dayIndex,
                                              deload: plan.week.isDeload, reading: plan.readiness))
+        let u = unit
         if let i = program.days.firstIndex(where: { $0.id == plan.day.id }) {
             program.days[i].accessories = program.days[i].accessories.map { a in
-                a.progressed(repsPerSet: accessoryReps[a.id] ?? [])
+                var today = a
+                if let used = loadsUsed[a.id] { today.loadKg = used }
+                let step = max(a.stepKg, 0.1)
+                let round = { (kg: Double) in u.toKg((u.fromKg(kg) / u.fromKg(step)).rounded() * u.fromKg(step)) }
+                return today.next(after: accessoryLog[a.id] ?? [], round: round).plan
             }
         }
         program.progress.finishSession(reading: plan.readiness, weeks: program.weeks, daysPerWeek: program.days.count)
