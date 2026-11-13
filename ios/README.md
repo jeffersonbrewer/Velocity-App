@@ -24,8 +24,14 @@ GymAware.
   plans 4–6 loads from about 40% to 90% (3, 2, then 1 fast rep), plus an optional max single.
   The camera stays on for the whole ramp: after each load is analyzed it shows that load's best
   mean velocity, a rest timer, the next load, and the 1RM so far. Loads can be changed or skipped.
+  After each load its reps show under the step chips: tap a rep to leave it out or bring it back
+  (tap any earlier load's chip to review it, or Details for the full results); the test re-plans
+  from the edited sets.
   From the second load on, the loads still to come are re-planned from the line so far: a lower
   1RM is taken at once (protects against an overestimated guess), a higher one cautiously.
+- **Rep screening** (every set): movements under 70% of the set's typical range (a step back,
+  settling, a partial) are left out and marked; reps over 25% faster than the set's median
+  (bounce?) or under 60% followed by faster reps (stall?) are kept but marked for review.
 - Milestone 5: **Program** tab. Build a block (3–10 weeks, 1–4 sessions a week, each day a main
   lift, a goal and accessories); the last week is a deload followed by a profile test. Each
   session: record the 60% warm-up for readiness, then the app gives each set's load and target

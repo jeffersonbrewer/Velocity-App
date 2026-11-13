@@ -231,6 +231,14 @@ struct SetResultsView: View {
                     .foregroundStyle(rep.deleted ? Theme.muted : .primary)
                     .contentShape(Rectangle())
                     .onTapGesture { editingRep = rep }
+                    if let flag = rep.flag {
+                        GridRow {
+                            Label(flag, systemImage: "exclamationmark.triangle")
+                                .font(.caption2).foregroundStyle(Theme.warn)
+                                .gridCellColumns(7)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                 }
             }
             Text("Tap a rep to adjust where it starts and ends, or to delete or restore it.")

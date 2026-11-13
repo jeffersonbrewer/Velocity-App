@@ -37,6 +37,8 @@ public struct EditableRep: Codable, Hashable, Sendable, Identifiable {
     /// The lifter's adjusted concentric start and end; nil means as detected.
     public var adjustedConcentric: Phase?
     public var deleted: Bool = false
+    /// Why screening questioned this rep (nil: looks normal). Partial reps are also left out.
+    public var flag: String?
 
     public var effective: Rep {
         Rep(number: detected.number, concentric: adjustedConcentric ?? detected.concentric, eccentric: detected.eccentric)
@@ -89,8 +91,15 @@ public enum SetAnalyzer {
             }
             found = found.enumerated().map { i, r in Rep(number: i + 1, concentric: r.concentric, eccentric: r.eccentric) }
         }
-        return SetAnalysis(input: input, settings: settings, track: track, kinematics: kin,
-                           reps: found.map { EditableRep(detected: $0) }, warnings: notes)
+        var reps = found.map { EditableRep(detected: $0) }
+        let screened = RepScreen.screen(&reps, kinematics: kin)
+        if screened.excluded > 0 {
+            notes.append("\(screened.excluded) movement(s) were much shorter than the other reps (a step back, settling or a partial), so they were left out. Restore them on the results if they were real reps.")
+        }
+        if screened.flagged > 0 {
+            notes.append("\(screened.flagged) rep(s) look unusually fast or slow for this set (a bounce or a stall?). They're kept but marked: review them on the results.")
+        }
+        return SetAnalysis(input: input, settings: settings, track: track, kinematics: kin, reps: reps, warnings: notes)
     }
 
     public static func warnings(for track: Track) -> [String] {
@@ -105,5 +114,52 @@ public enum SetAnalyzer {
             out.append("The plate was not found in \(Int((track.lostFraction * 100).rounded()))% of frames.")
         }
         return out
+    }
+}
+
+/// Screens detected reps for things that aren't real reps or give misleading velocities.
+///
+/// - Partial range: a concentric phase under 70% of the set's typical distance (the median of
+///   the reps), such as a step back after unracking, settling the bar, or an incomplete rep. These
+///   are left out, and can be restored.
+/// - Velocity outliers, among the remaining reps: a rep more than 25% faster than the median
+///   (often a bounce), or one under 60% of the median that's followed by faster reps (a stall or
+///   hitch, not fatigue). These are only marked, because they can be real.
+public enum RepScreen {
+    @discardableResult
+    public static func screen(_ reps: inout [EditableRep], kinematics kin: Kinematics,
+                              partialFraction: Double = 0.70) -> (excluded: Int, flagged: Int) {
+        guard reps.count >= 2 else { return (0, 0) }
+        func distance(_ r: EditableRep) -> Double {
+            let c = r.effective.concentric
+            return abs(kin.y[c.end] - kin.y[c.start])
+        }
+        func mv(_ r: EditableRep) -> Double {
+            let c = r.effective.concentric
+            let v = kin.v[c.start...c.end]
+            return v.reduce(0, +) / Double(v.count)
+        }
+        let dists = reps.map(distance)
+        let typical = Stats.median(dists)
+        var excluded = 0
+        for i in reps.indices where !reps[i].deleted && dists[i] < partialFraction * typical {
+            reps[i].deleted = true
+            reps[i].flag = String(format: "Partial range: %.0f cm vs %.0f cm typical", dists[i] * 100, typical * 100)
+            excluded += 1
+        }
+        let kept = reps.indices.filter { !reps[$0].deleted }
+        guard kept.count >= 3 else { return (excluded, 0) }
+        let mvs = Dictionary(uniqueKeysWithValues: kept.map { ($0, mv(reps[$0])) })
+        let med = Stats.median(kept.map { mvs[$0]! })
+        var flagged = 0
+        for (n, i) in kept.enumerated() {
+            let v = mvs[i]!
+            if v > 1.25 * med {
+                reps[i].flag = String(format: "Unusually fast: %.2f vs %.2f m/s typical (bounce?)", v, med); flagged += 1
+            } else if v < 0.60 * med, kept[(n + 1)...].contains(where: { mvs[$0]! > 0.8 * med }) {
+                reps[i].flag = String(format: "Unusually slow: %.2f vs %.2f m/s typical (stall?)", v, med); flagged += 1
+            }
+        }
+        return (excluded, flagged)
     }
 }

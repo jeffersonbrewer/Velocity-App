@@ -337,3 +337,29 @@ final class AccessoryTests: XCTestCase {
         XCTAssertTrue(flags.contains { $0.contains("Pushing outweighs") })
     }
 }
+
+final class RepScreenTests: XCTestCase {
+    /// Squat-like set: a 30 cm partial while settling, then 4 full reps of 50 cm, the third much faster.
+    /// (Bumps under half the typical range are already dropped by the segmenter.)
+    func testPartialLeftOutAndFastRepMarked() {
+        let fps = 240.0
+        var y: [Double] = []
+        func hold(_ s: Double) { y += Array(repeating: y.last ?? 0, count: Int(s * fps)) }
+        func move(_ d: Double, _ s: Double) {
+            let y0 = y.last ?? 0, n = Int(s * fps)
+            for i in 1...n { y.append(y0 + d * (1 - cos(Double.pi * Double(i) / Double(n))) / 2) }
+        }
+        hold(1); move(-0.30, 0.6); move(0.30, 0.6); hold(1)            // settling after the unrack
+        for up in [0.8, 0.8, 0.5, 0.8] { move(-0.5, 1.0); move(0.5, up); hold(0.8) }
+        let t = y.indices.map { Double($0) / fps }
+        let kin = KinematicsBuilder.fromPosition(t: t, x: t.map { _ in 0 }, y: y, fps: fps, cutoffHz: 8)
+        var reps = RepSegmenter.segment(kin, concentricFirst: false).map { EditableRep(detected: $0) }
+        XCTAssertEqual(reps.count, 5)
+        let r = RepScreen.screen(&reps, kinematics: kin)
+        XCTAssertEqual(r.excluded, 1)
+        XCTAssertTrue(reps[0].deleted)
+        XCTAssertEqual(r.flagged, 1)
+        XCTAssertTrue(reps[3].flag?.hasPrefix("Unusually fast") ?? false)
+        XCTAssertFalse(reps[3].deleted)
+    }
+}

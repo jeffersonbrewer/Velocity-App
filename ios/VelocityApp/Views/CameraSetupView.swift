@@ -19,6 +19,8 @@ struct CameraSetupView: View {
     @State private var test: ProfileTestPlan?
     @State private var lastSetEnd: Date?
     @State private var adjustNote: String?
+    @State private var reviewSetID: UUID?
+    @State private var showDetails = false
 
     init(test: ProfileTestPlan? = nil) { _test = State(initialValue: test) }
 
@@ -50,6 +52,14 @@ struct CameraSetupView: View {
             .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
             .onReceive(ticker) { now = $0 }
+            .sheet(isPresented: $showDetails, onDismiss: refreshTest) {
+                if let id = reviewSetID {
+                    NavigationStack {
+                        SetResultsView(setID: id)
+                            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { showDetails = false } } }
+                    }
+                }
+            }
         }
     }
 
@@ -223,9 +233,17 @@ struct CameraSetupView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(Array(plan.steps.enumerated()), id: \.element.id) { i, step in
-                            stepChip(step, current: i == plan.currentIndex)
+                            Button { if let id = step.setID { reviewSetID = id } } label: {
+                                stepChip(step, current: i == plan.currentIndex)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.warn, lineWidth: step.setID != nil && step.setID == reviewSetID ? 2 : 0))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(step.setID == nil || isRecording)
                         }
                     }
+                }
+                if let id = reviewSetID, let set = model.set(id) {
+                    RepReviewStrip(set: set, unit: unit, onToggle: { k in toggleRep(id, k) }, onDetails: { showDetails = true })
                 }
                 if let i = plan.currentIndex {
                     let step = plan.steps[i]
@@ -326,6 +344,36 @@ struct CameraSetupView: View {
         model.nextSetType = step.isMaxSingle ? .maxSingle : .profileTest
     }
 
+    /// Leave a rep out or bring it back, then update the test from the edited set.
+    private func toggleRep(_ setID: UUID, _ index: Int) {
+        guard var s = model.set(setID), s.analysis.reps.indices.contains(index) else { return }
+        s.analysis.reps[index].deleted.toggle()
+        model.update(s)
+        refreshTest()
+    }
+
+    /// Re-read each recorded load's fastest rep after edits and re-plan the loads still to come.
+    private func refreshTest() {
+        guard var plan = test else { return }
+        for i in plan.steps.indices {
+            guard let id = plan.steps[i].setID else { continue }
+            if let m = model.set(id)?.analysis.setMetrics, m.repCount > 0 {
+                plan.steps[i].bestMeanVelocity = m.bestMeanVelocity
+            } else {
+                // Every rep was left out: record this load again.
+                plan.steps[i].setID = nil
+                plan.steps[i].bestMeanVelocity = nil
+                plan.steps[i].skipped = false
+            }
+        }
+        let ex = ExerciseCatalog.exercise(id: plan.exerciseID)
+        let mvt = model.profile(for: plan.exerciseID).mvt ?? model.prefs(for: plan.exerciseID).editedMvt ?? ex?.defaultMvt
+        plan.planKg = plan.guessKg
+        _ = plan.adapt(mvt: (ex?.allowsOneRm ?? true) ? mvt : nil, unit: unit)
+        test = plan
+        applyCurrentStep()
+    }
+
     private func finishTest() {
         guard test != nil else { return }
         model.nextSetType = .working
@@ -374,6 +422,7 @@ struct CameraSetupView: View {
                             model.add(set)
                             plan.steps[i].setID = set.id
                             plan.steps[i].bestMeanVelocity = m.bestMeanVelocity
+                            reviewSetID = set.id
                             let ex = ExerciseCatalog.exercise(id: plan.exerciseID)
                             let mvt = model.profile(for: plan.exerciseID).mvt ?? model.prefs(for: plan.exerciseID).editedMvt ?? ex?.defaultMvt
                             if plan.adapt(mvt: (ex?.allowsOneRm ?? true) ? mvt : nil, unit: unit) {
@@ -431,6 +480,51 @@ struct CameraPreview: UIViewRepresentable {
     func updateUIView(_ uiView: PreviewView, context: Context) {
         if let conn = uiView.previewLayer.connection, conn.videoRotationAngle != 90, conn.isVideoRotationAngleSupported(90) {
             conn.videoRotationAngle = 90
+        }
+    }
+}
+
+/// The reps of one recorded load, for a quick check during a profile test: tap a rep to leave it
+/// out or bring it back. Reps screening questioned are marked.
+struct RepReviewStrip: View {
+    let set: AnalyzedSet
+    let unit: WeightUnit
+    let onToggle: (Int) -> Void
+    let onDetails: () -> Void
+
+    var body: some View {
+        let a = set.analysis
+        let kept = a.reps.filter { !$0.deleted }.map(\.id)
+        let mvByID = Dictionary(uniqueKeysWithValues: zip(kept, (a.setMetrics?.reps ?? []).map(\.meanVelocity)))
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("\(unit.format(kg: a.input.loadKg)) \(unit.rawValue): tap a rep to leave it out").font(.caption).foregroundStyle(Theme.muted)
+                Spacer()
+                Button("Details", action: onDetails).font(.caption.weight(.semibold))
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(Array(a.reps.enumerated()), id: \.offset) { k, rep in
+                        Button { onToggle(k) } label: {
+                            VStack(spacing: 1) {
+                                Text("Rep \(k + 1)").font(.caption2)
+                                Text(rep.deleted ? "out" : Fmt.velocity(mvByID[rep.id]))
+                                    .font(.caption.weight(.semibold)).monospacedDigit()
+                                    .strikethrough(rep.deleted)
+                            }
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .foregroundStyle(rep.deleted ? Theme.muted : (rep.flag != nil ? Theme.warn : Color.primary))
+                            .background(Theme.card, in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(rep.flag != nil ? Theme.warn : Theme.line))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Rep \(k + 1), \(rep.deleted ? "left out" : "kept")\(rep.flag.map { ", " + $0 } ?? "")")
+                    }
+                }
+            }
+            if let flag = a.reps.first(where: { $0.flag != nil && !$0.deleted })?.flag {
+                Text(flag).font(.caption2).foregroundStyle(Theme.warn)
+            }
         }
     }
 }
