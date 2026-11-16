@@ -59,6 +59,9 @@ struct CameraSetupView: View {
             }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
             .onReceive(ticker) { now = $0 }
+            .onChange(of: camera.liveSettled) { _, done in
+                if done && isRecording { stopAndAnalyze() }   // the bar has stayed still after the last rep
+            }
             .onChange(of: isRecording) { _, rec in
                 if rec && dimWhileRecording { dimmer.dim() } else { dimmer.restore() }
             }
@@ -357,15 +360,18 @@ struct CameraSetupView: View {
         model.nextSetRepCap = step.reps
     }
 
-    /// Live counting settings for the set about to be recorded, or nil with sound cues off.
+    /// Live counting settings for the set about to be recorded, or nil with sound cues and auto-stop off.
     private func liveSettings() -> CameraRecorder.LiveSettings? {
         let d = UserDefaults.standard
-        guard d.object(forKey: SettingsKey.liveCues) as? Bool ?? true else { return nil }
+        let sounds = d.object(forKey: SettingsKey.liveCues) as? Bool ?? true
+        let settle = SettingsKey.autoStopSeconds(d)
+        guard sounds || settle != nil else { return nil }
         let a = SettingsKey.analysisSettings()
         // A profile test stops on its rep count, never on velocity loss.
         return CameraRecorder.LiveSettings(lossCutoffPct: test == nil ? model.lossCutoff(for: model.currentExerciseID) : nil,
                                            repCap: model.nextSetRepCap, plateDiameterM: a.plateDiameterM,
-                                           cutoffHz: a.cutoffHz, speakReps: d.bool(forKey: SettingsKey.speakReps))
+                                           cutoffHz: a.cutoffHz, speakReps: d.bool(forKey: SettingsKey.speakReps),
+                                           sounds: sounds, settleSeconds: settle)
     }
 
     /// Live rep count while recording: big enough for a coach beside the phone to read.

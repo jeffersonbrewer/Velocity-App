@@ -218,6 +218,14 @@ enum SettingsKey {
     static let liveCues = "liveCues"               // tones during the set (default on)
     static let speakReps = "speakReps"             // say each rep's velocity (default off)
     static let dimWhileRecording = "dimWhileRecording"  // dim the screen during a set (default on)
+    static let autoStop = "autoStop"               // stop recording once the bar is still after a rep (default on)
+    static let autoStopSeconds = "autoStopSeconds" // how long still, default 3 s
+
+    /// Seconds of stillness after the last rep that end the recording, or nil when auto-stop is off.
+    static func autoStopSeconds(_ d: UserDefaults = .standard) -> Double? {
+        guard d.object(forKey: autoStop) as? Bool ?? true else { return nil }
+        return d.object(forKey: autoStopSeconds) as? Double ?? 3
+    }
     static let exercisePrefs = "exercisePrefs"     // JSON [exercise id: ExercisePrefs]
 
     static func analysisSettings(_ d: UserDefaults = .standard) -> AnalysisSettings {

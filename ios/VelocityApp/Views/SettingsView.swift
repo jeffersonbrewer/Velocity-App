@@ -14,6 +14,8 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.liveCues) private var liveCues = true
     @AppStorage(SettingsKey.speakReps) private var speakReps = false
     @AppStorage(SettingsKey.dimWhileRecording) private var dimWhileRecording = true
+    @AppStorage(SettingsKey.autoStop) private var autoStop = true
+    @AppStorage(SettingsKey.autoStopSeconds) private var autoStopSeconds = 3.0
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
@@ -40,8 +42,14 @@ struct SettingsView: View {
                     Toggle("Sound cues during the set", isOn: $liveCues)
                     if liveCues { Toggle("Say each rep's velocity", isOn: $speakReps) }
                     Toggle("Dim the screen while recording", isOn: $dimWhileRecording)
+                    Toggle("Stop recording when the bar is still", isOn: $autoStop)
+                    if autoStop {
+                        Stepper(value: $autoStopSeconds, in: 2...15, step: 1) {
+                            HStack { Text("Still for"); Spacer(); Text("\(Int(autoStopSeconds)) s").monospacedDigit().foregroundStyle(Theme.muted) }
+                        }
+                    }
                 } header: { Text("Recording") } footer: {
-                    Text("Videos: off deletes each recorded set once it's analyzed, so videos don't fill your phone; on also saves the 240 fps video to Photos. Sound cues: a tone on each rep, a double tone for a likely bounce, and a falling three-tone stop when velocity loss reaches the cutoff or the rep cap is reached. The live count is for cueing; the results after the set are the record. Dimming saves battery and heat; tap the screen to see it for a few seconds.")
+                    Text("Videos: off deletes each recorded set once it's analyzed, so videos don't fill your phone; on also saves the 240 fps video to Photos. Sound cues: a tone on each rep, a double tone for a likely bounce, and a falling three-tone stop when velocity loss reaches the cutoff or the rep cap is reached. The live count is for cueing; the results after the set are the record. Dimming saves battery and heat; tap the screen to see it for a few seconds. Auto-stop ends the recording once at least one rep is counted and the bar then stays within 3 cm for the set time; any movement restarts the wait, so extra reps are still recorded. Raise the time for sets with long pauses between reps.")
                 }
 
                 Section {

@@ -13,7 +13,10 @@ import Foundation
 ///    partial and doesn't count; a rep over 25% faster than the typical rep so far is counted but
 ///    marked as a likely bounce and never becomes the loss reference;
 /// 4. reports velocity loss against the fastest unmarked rep so far, and says when to stop:
-///    loss at or past the cutoff, or the rep cap reached.
+///    loss at or past the cutoff, or the rep cap reached;
+/// 5. optionally says when the set is over: once at least one rep is counted, the bar has stayed
+///    within 3 cm for `settleSeconds`. Any movement restarts that wait, so reps after the stop cue
+///    are never cut off.
 ///
 /// The after-set analysis stays the record; these numbers are for cueing only.
 public final class LiveRepCounter {
@@ -37,6 +40,9 @@ public final class LiveRepCounter {
 
     public private(set) var reps: [RepEvent] = []
     public private(set) var stopped = false
+    /// True once the bar has stayed still for `settleSeconds` after a counted rep.
+    public private(set) var settled = false
+    public let settleSeconds: Double?
 
     // Scale, from the plate radius over the first frames.
     private var radii: [Double] = []
@@ -59,9 +65,13 @@ public final class LiveRepCounter {
     private let vThresh = 0.05, minRom = 0.10, mergeGap = 0.25
     private var distances: [Double] = []    // counted reps
     private var unmarked: [Double] = []     // mean velocities of counted reps not marked as bounces
+    private var stillY: Double?, stillSince = 0.0   // where and since when (grid time) the bar has stayed
+    private let stillBand = 0.03
 
-    public init(plateDiameterM: Double = 0.45, cutoffHz: Double = 8, lossCutoffPct: Double?, repCap: Int?) {
+    public init(plateDiameterM: Double = 0.45, cutoffHz: Double = 8, lossCutoffPct: Double?, repCap: Int?,
+                settleSeconds: Double? = nil) {
         self.plateDiameterM = plateDiameterM
+        self.settleSeconds = settleSeconds
         self.lossCutoffPct = lossCutoffPct
         self.repCap = repCap
         filter = Biquad(lowpassCutoff: cutoffHz, sampleRate: 100)
@@ -89,13 +99,13 @@ public final class LiveRepCounter {
         var out: [RepEvent] = []
         while let g = nextGridT, g <= t {
             let yi = g <= t0 ? y0 : y0 + (y - y0) * (g - t0) / (t - t0)
-            if let e = step(yi) { out.append(e) }
+            if let e = step(yi, at: g) { out.append(e) }
             nextGridT = g + dt
         }
         return out
     }
 
-    private func step(_ y: Double) -> RepEvent? {
+    private func step(_ y: Double, at g: Double) -> RepEvent? {
         if !primed { filter.prime(y); primed = true }
         let yf = filter.process(y)
         let v = prevYf.map { (yf - $0) / dt } ?? 0
@@ -103,6 +113,8 @@ public final class LiveRepCounter {
         ys.append(yf); vs.append(v)
         let i = vs.count - 1
         if i > 0 && vs[i - 1] <= 0 && v > 0 { lastZeroUp = i }
+        if stillY == nil || abs(yf - stillY!) > stillBand || upStart != nil { stillY = yf; stillSince = g }
+        if let s = settleSeconds, !settled, !reps.isEmpty, upStart == nil, g - stillSince >= s { settled = true }
 
         if let s = upStart {
             if v > vThresh {

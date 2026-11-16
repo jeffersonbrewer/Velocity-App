@@ -366,7 +366,7 @@ final class RepScreenTests: XCTestCase {
 
 final class LiveRepTests: XCTestCase {
     /// A squat-like set with slowing reps, fed at an irregular ~150 frames a second.
-    private func makeSet(upTimes: [Double]) -> (t: [Double], yPx: [Double]) {
+    private func makeSet(upTimes: [Double], pause: Double = 0.8, end: Double = 1) -> (t: [Double], yPx: [Double]) {
         let fps = 240.0
         var y: [Double] = []
         func hold(_ s: Double) { y += Array(repeating: y.last ?? 0, count: Int(s * fps)) }
@@ -375,8 +375,8 @@ final class LiveRepTests: XCTestCase {
             for i in 1...n { y.append(y0 + d * (1 - cos(Double.pi * Double(i) / Double(n))) / 2) }
         }
         hold(1)
-        for up in upTimes { move(-0.5, 1.0); move(0.5, up); hold(0.8) }
-        hold(1)
+        for up in upTimes { move(-0.5, 1.0); move(0.5, up); hold(pause) }
+        hold(end)
         let mpp = 0.45 / 200
         var t: [Double] = [], yPx: [Double] = []
         var rng = SystemRandomNumberGenerator()
@@ -419,5 +419,25 @@ final class LiveRepTests: XCTestCase {
         XCTAssertTrue(events[3].likelyBounce)
         XCTAssertEqual(events[4].lossPct, 0, accuracy: 3)   // compared with reps 1-3, not the bounce
         XCTAssertEqual(events[2].stop, .repCap(3))
+    }
+
+    func testSettlesOnlyAfterStillnessAndNotBetweenReps() {
+        // 2.5 s pauses between reps never end the set; 3 s of stillness after the last rep does.
+        let s = makeSet(upTimes: [0.8, 0.8, 0.8], pause: 2.5, end: 4)
+        let live = LiveRepCounter(lossCutoffPct: 20, repCap: 1, settleSeconds: 3)
+        var settledAt: Double?
+        var reps = 0
+        for k in s.t.indices {
+            reps += live.add(time: s.t[k], yPixels: s.yPx[k], radiusPx: 100).count
+            if live.settled && settledAt == nil { settledAt = s.t[k]; XCTAssertEqual(reps, 3) }
+        }
+        let end = 1 + 3 * (1.0 + 0.8 + 2.5)   // when the last rep's lockout ends
+        let at = try! XCTUnwrap(settledAt)
+        XCTAssertGreaterThan(at, end - 2.5 + 3 - 0.3)
+        XCTAssertLessThan(at, end - 2.5 + 3 + 0.5)
+        // Off by default.
+        let off = LiveRepCounter(lossCutoffPct: nil, repCap: nil)
+        for k in s.t.indices { _ = off.add(time: s.t[k], yPixels: s.yPx[k], radiusPx: 100) }
+        XCTAssertFalse(off.settled)
     }
 }

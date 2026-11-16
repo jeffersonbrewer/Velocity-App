@@ -29,6 +29,8 @@ final class CameraRecorder: NSObject, ObservableObject {
     @Published private(set) var liveReps: [LiveRepCounter.RepEvent] = []
     @Published private(set) var liveStop: LiveRepCounter.StopReason?
     @Published private(set) var liveTracking = false
+    /// The bar has stayed still long enough after the last rep that the set is over.
+    @Published private(set) var liveSettled = false
 
     /// What the live counter needs for one set.
     struct LiveSettings {
@@ -37,6 +39,8 @@ final class CameraRecorder: NSObject, ObservableObject {
         var plateDiameterM: Double
         var cutoffHz: Double
         var speakReps: Bool
+        var sounds: Bool
+        var settleSeconds: Double?
     }
     let cues = LiveCuePlayer()
 
@@ -155,8 +159,8 @@ final class CameraRecorder: NSObject, ObservableObject {
 
     func startRecording(live settings: LiveSettings? = nil) {
         guard state == .ready else { return }
-        if settings != nil { cues.start() }
-        DispatchQueue.main.async { self.liveReps = []; self.liveStop = nil; self.liveTracking = false }
+        if settings?.sounds == true { cues.start() }
+        DispatchQueue.main.async { self.liveReps = []; self.liveStop = nil; self.liveTracking = false; self.liveSettled = false }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("set-\(UUID().uuidString).mov")
         let settings = output.recommendedVideoSettings(forVideoCodecType: .hevc, assetWriterOutputFileType: .mov)
             ?? output.recommendedVideoSettingsForAssetWriter(writingTo: .mov)
@@ -177,7 +181,8 @@ final class CameraRecorder: NSObject, ObservableObject {
                 self.dropped = 0
                 if let settings {
                     self.live = (PlateTracker(), LiveRepCounter(plateDiameterM: settings.plateDiameterM, cutoffHz: settings.cutoffHz,
-                                                                lossCutoffPct: settings.lossCutoffPct, repCap: settings.repCap), settings)
+                                                                lossCutoffPct: settings.lossCutoffPct, repCap: settings.repCap,
+                                                                settleSeconds: settings.settleSeconds), settings)
                     self.lastLiveTime = -Double.infinity
                     self.liveBusy = false
                 }
@@ -295,12 +300,14 @@ extension CameraRecorder: AVCaptureVideoDataOutputSampleBufferDelegate {
             let circle = live.tracker.add(image, time: time)
             let events = circle.map { live.counter.add(time: time, yPixels: $0.y, radiusPx: $0.r) } ?? []
             let found = circle != nil
+            let settled = live.counter.settled
             DispatchQueue.main.async {
                 if self.liveTracking != found { self.liveTracking = found }
+                if settled && !self.liveSettled { self.liveSettled = true }
                 for e in events {
                     self.liveReps.append(e)
                     if let s = e.stop { self.liveStop = s }
-                    self.cues.rep(e, speak: live.settings.speakReps)
+                    if live.settings.sounds { self.cues.rep(e, speak: live.settings.speakReps) }
                 }
             }
         }
