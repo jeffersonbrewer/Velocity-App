@@ -10,3 +10,4 @@ synthetic/
 ios/VelocityCore/.build/
 ios/**/xcuserdata/
 .DS_Store
+ios/build/
