@@ -118,6 +118,7 @@ extension AppModel {
         nextSetType = .working
         var p = prefs(for: id)
         p.loadKg = loadKg
+        nextSetRepCap = plan.prescription.repCapPerSet
         p.lossCutoffPct = plan.prescription.lossCutoffPct
         p.targetLow = plan.prescription.zoneLow.map { ($0 * 100).rounded() / 100 }
         p.targetHigh = plan.prescription.zoneHigh.map { ($0 * 100).rounded() / 100 }

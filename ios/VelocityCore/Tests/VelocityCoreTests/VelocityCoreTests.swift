@@ -363,3 +363,61 @@ final class RepScreenTests: XCTestCase {
         XCTAssertFalse(reps[3].deleted)
     }
 }
+
+final class LiveRepTests: XCTestCase {
+    /// A squat-like set with slowing reps, fed at an irregular ~150 frames a second.
+    private func makeSet(upTimes: [Double]) -> (t: [Double], yPx: [Double]) {
+        let fps = 240.0
+        var y: [Double] = []
+        func hold(_ s: Double) { y += Array(repeating: y.last ?? 0, count: Int(s * fps)) }
+        func move(_ d: Double, _ s: Double) {
+            let y0 = y.last ?? 0, n = Int(s * fps)
+            for i in 1...n { y.append(y0 + d * (1 - cos(Double.pi * Double(i) / Double(n))) / 2) }
+        }
+        hold(1)
+        for up in upTimes { move(-0.5, 1.0); move(0.5, up); hold(0.8) }
+        hold(1)
+        let mpp = 0.45 / 200
+        var t: [Double] = [], yPx: [Double] = []
+        var rng = SystemRandomNumberGenerator()
+        var i = 0
+        while i < y.count {
+            t.append(Double(i) / fps); yPx.append(1000 - y[i] / mpp)
+            i += Int.random(in: 1...2, using: &rng)   // irregular: the phone skips frames when busy
+        }
+        return (t, yPx)
+    }
+
+    func testLiveMatchesAfterSetAndStopsAtCutoff() throws {
+        let ups = [0.70, 0.72, 0.78, 0.85, 0.95]       // mean velocity falls about 26% by rep 5
+        let s = makeSet(upTimes: ups)
+        let live = LiveRepCounter(lossCutoffPct: 20, repCap: nil)
+        var events: [LiveRepCounter.RepEvent] = []
+        for k in s.t.indices { events += live.add(time: s.t[k], yPixels: s.yPx[k], radiusPx: 100) }
+        XCTAssertEqual(events.count, 5)
+        // The after-set engine on the same frames.
+        let track = Track(fps: 150, t: s.t, x: s.t.map { _ in 540 }, y: s.yPx, r: s.t.map { _ in 100 },
+                          roundness: 1, frameWidth: 1080, frameHeight: 1920)
+        let ex = ExerciseCatalog.exercise(id: "back_squat")!
+        let a = try SetAnalyzer.analyze(track: track, input: SetInput(exercise: ex, loadKg: 100), settings: .init())
+        let after = try XCTUnwrap(a.setMetrics).reps.map(\.meanVelocity)
+        XCTAssertEqual(after.count, 5)
+        print("LIVEvsAFTER", zip(events.map(\.meanVelocity), after).map { String(format: "%.3f/%.3f", $0, $1) })
+        for (l, r) in zip(events.map(\.meanVelocity), after) { XCTAssertEqual(l, r, accuracy: 0.02) }
+        let stopAt = try XCTUnwrap(events.firstIndex { $0.stop != nil })
+        XCTAssertEqual(events[stopAt].stop, .lossCutoff(20))
+        XCTAssertGreaterThanOrEqual(events[stopAt].lossPct, 20)
+        XCTAssertLessThan(events[stopAt - 1].lossPct, 20)
+    }
+
+    func testBounceIsNotTheReference() {
+        let s = makeSet(upTimes: [0.8, 0.8, 0.8, 0.5, 0.8])   // rep 4 much faster
+        let live = LiveRepCounter(lossCutoffPct: 20, repCap: 3)
+        var events: [LiveRepCounter.RepEvent] = []
+        for k in s.t.indices { events += live.add(time: s.t[k], yPixels: s.yPx[k], radiusPx: 100) }
+        XCTAssertEqual(events.count, 5)
+        XCTAssertTrue(events[3].likelyBounce)
+        XCTAssertEqual(events[4].lossPct, 0, accuracy: 3)   // compared with reps 1-3, not the bounce
+        XCTAssertEqual(events[2].stop, .repCap(3))
+    }
+}

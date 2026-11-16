@@ -25,11 +25,26 @@ final class CameraRecorder: NSObject, ObservableObject {
     @Published private(set) var pitch: Double = 0
     @Published private(set) var roll: Double = 0
     @Published private(set) var droppedFrames = 0
+    /// Reps counted live during the current recording, and whether the stop cue has sounded.
+    @Published private(set) var liveReps: [LiveRepCounter.RepEvent] = []
+    @Published private(set) var liveStop: LiveRepCounter.StopReason?
+    @Published private(set) var liveTracking = false
+
+    /// What the live counter needs for one set.
+    struct LiveSettings {
+        var lossCutoffPct: Double?
+        var repCap: Int?
+        var plateDiameterM: Double
+        var cutoffHz: Double
+        var speakReps: Bool
+    }
+    let cues = LiveCuePlayer()
 
     let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "camera.session")
     private let videoQueue = DispatchQueue(label: "camera.video", qos: .userInteractive)
     private let checkQueue = DispatchQueue(label: "camera.platecheck", qos: .userInitiated)
+    private let liveQueue = DispatchQueue(label: "camera.live", qos: .userInitiated)
     private let output = AVCaptureVideoDataOutput()
     private let motion = CMMotionManager()
 
@@ -42,6 +57,11 @@ final class CameraRecorder: NSObject, ObservableObject {
     private var lastCheck: CFTimeInterval = 0
     private var checking = false
     private var dropped = 0
+
+    // Live counting: set and read on videoQueue; the tracker and counter are used on liveQueue.
+    private var live: (tracker: PlateTracker, counter: LiveRepCounter, settings: LiveSettings)?
+    private var liveBusy = false
+    private var lastLiveTime = -Double.infinity
 
     // MARK: Session
 
@@ -133,8 +153,10 @@ final class CameraRecorder: NSObject, ObservableObject {
 
     // MARK: Recording
 
-    func startRecording() {
+    func startRecording(live settings: LiveSettings? = nil) {
         guard state == .ready else { return }
+        if settings != nil { cues.start() }
+        DispatchQueue.main.async { self.liveReps = []; self.liveStop = nil; self.liveTracking = false }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("set-\(UUID().uuidString).mov")
         let settings = output.recommendedVideoSettings(forVideoCodecType: .hevc, assetWriterOutputFileType: .mov)
             ?? output.recommendedVideoSettingsForAssetWriter(writingTo: .mov)
@@ -153,6 +175,12 @@ final class CameraRecorder: NSObject, ObservableObject {
                 self.writerStarted = false
                 self.recordingURL = url
                 self.dropped = 0
+                if let settings {
+                    self.live = (PlateTracker(), LiveRepCounter(plateDiameterM: settings.plateDiameterM, cutoffHz: settings.cutoffHz,
+                                                                lossCutoffPct: settings.lossCutoffPct, repCap: settings.repCap), settings)
+                    self.lastLiveTime = -Double.infinity
+                    self.liveBusy = false
+                }
                 DispatchQueue.main.async { self.droppedFrames = 0; self.state = .recording(started: Date()) }
             } catch {
                 DispatchQueue.main.async { self.state = .failed("Couldn't start recording: \(error.localizedDescription)") }
@@ -170,6 +198,7 @@ final class CameraRecorder: NSObject, ObservableObject {
             }
             self.writer = nil
             self.writerInput = nil
+            self.live = nil
             let url = self.recordingURL
             guard self.writerStarted else {
                 w.cancelWriting()
@@ -223,6 +252,7 @@ extension CameraRecorder: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
             if input.isReadyForMoreMediaData {
                 input.append(sampleBuffer)
+                liveTrack(sampleBuffer)
             } else {
                 dropped += 1
                 let d = dropped
@@ -238,6 +268,42 @@ extension CameraRecorder: AVCaptureVideoDataOutputSampleBufferDelegate {
         dropped += 1
         let d = dropped
         DispatchQueue.main.async { self.droppedFrames = d }
+    }
+
+    /// Track the plate in this frame for the live rep count, when the last frame is done and at
+    /// most 120 times a second, so the recording keeps every frame.
+    private func liveTrack(_ sampleBuffer: CMSampleBuffer) {
+        guard let live, !liveBusy else { return }
+        let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        guard time - lastLiveTime >= 1.0 / 120 else { return }
+        lastLiveTime = time
+        liveBusy = true
+        liveQueue.async {
+            defer { self.videoQueue.async { self.liveBusy = false } }
+            guard let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+            CVPixelBufferLockBaseAddress(pixels, .readOnly)
+            guard let base = CVPixelBufferGetBaseAddressOfPlane(pixels, 0) else {
+                CVPixelBufferUnlockBaseAddress(pixels, .readOnly); return
+            }
+            let image = GrayImage(
+                plane: UnsafePointer(base.assumingMemoryBound(to: UInt8.self)),
+                width: CVPixelBufferGetWidthOfPlane(pixels, 0),
+                height: CVPixelBufferGetHeightOfPlane(pixels, 0),
+                bytesPerRow: CVPixelBufferGetBytesPerRowOfPlane(pixels, 0),
+                rotationCW: 90)
+            CVPixelBufferUnlockBaseAddress(pixels, .readOnly)
+            let circle = live.tracker.add(image, time: time)
+            let events = circle.map { live.counter.add(time: time, yPixels: $0.y, radiusPx: $0.r) } ?? []
+            let found = circle != nil
+            DispatchQueue.main.async {
+                if self.liveTracking != found { self.liveTracking = found }
+                for e in events {
+                    self.liveReps.append(e)
+                    if let s = e.stop { self.liveStop = s }
+                    self.cues.rep(e, speak: live.settings.speakReps)
+                }
+            }
+        }
     }
 
     /// About three times a second, look for the plate in the current frame.

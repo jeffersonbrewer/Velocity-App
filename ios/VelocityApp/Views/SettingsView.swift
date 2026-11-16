@@ -11,6 +11,8 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.plateDiameterCm) private var plateCm = 45.0
     @AppStorage(SettingsKey.tiltCorrection) private var tilt = true
     @AppStorage(SettingsKey.keepSetVideos) private var keepVideos = false
+    @AppStorage(SettingsKey.liveCues) private var liveCues = true
+    @AppStorage(SettingsKey.speakReps) private var speakReps = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
@@ -34,8 +36,10 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Save set videos to Photos", isOn: $keepVideos)
+                    Toggle("Sound cues during the set", isOn: $liveCues)
+                    if liveCues { Toggle("Say each rep's velocity", isOn: $speakReps) }
                 } header: { Text("Recording") } footer: {
-                    Text("Off: each recorded set is deleted once it's analyzed, so videos don't fill your phone. On: the 240 fps video is also saved to Photos.")
+                    Text("Videos: off deletes each recorded set once it's analyzed, so videos don't fill your phone; on also saves the 240 fps video to Photos. Sound cues: a tone on each rep, a double tone for a likely bounce, and a falling three-tone stop when velocity loss reaches the cutoff or the rep cap is reached. The live count is for cueing; the results after the set are the record.")
                 }
 
                 Section {

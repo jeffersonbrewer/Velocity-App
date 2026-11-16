@@ -120,20 +120,24 @@ public enum MetricsCalculator {
 
     public static func setSummary(loadKg: Double, systemMassKg: Double, reps: [RepMetrics],
                                   velocityLossThresholdPct: Double? = nil,
-                                  targetMeanVelocity: ClosedRange<Double>? = nil) -> SetMetrics? {
+                                  targetMeanVelocity: ClosedRange<Double>? = nil,
+                                  notReference: Set<Int> = []) -> SetMetrics? {
         guard !reps.isEmpty else { return nil }
+        // Reps in notReference (likely bounces) still count, but never become the fastest-rep
+        // reference for velocity loss or the set's best mean velocity.
         let mv = reps.map(\.meanVelocity), pv = reps.map(\.peakVelocity)
         let mp = reps.map(\.meanPower), pp = reps.map(\.peakPower)
         let cd = reps.map(\.concentricDistance)
         let ed = reps.compactMap(\.eccentricDistance)
-        let best = mv.max()!
+        let refMV = zip(reps, mv).filter { !notReference.contains($0.0.rep) }.map(\.1)
+        let best = refMV.max() ?? mv.max()!
 
         var reached: Int? = nil
         if let thr = velocityLossThresholdPct {
             var runningBest = -Double.infinity
             for (i, m) in mv.enumerated() {
-                runningBest = max(runningBest, m)
-                if (runningBest - m) / runningBest * 100 >= thr { reached = reps[i].rep; break }
+                if !notReference.contains(reps[i].rep) { runningBest = max(runningBest, m) }
+                if runningBest > 0, (runningBest - m) / runningBest * 100 >= thr { reached = reps[i].rep; break }
             }
         }
         let outside = targetMeanVelocity.map { zone in reps.filter { !zone.contains($0.meanVelocity) }.map(\.rep) } ?? []

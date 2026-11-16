@@ -68,9 +68,11 @@ public struct SetAnalysis: Sendable {
     }
 
     public var setMetrics: SetMetrics? {
-        MetricsCalculator.setSummary(loadKg: input.loadKg, systemMassKg: systemMassKg, reps: repMetrics,
-                                     velocityLossThresholdPct: input.velocityLossThresholdPct,
-                                     targetMeanVelocity: input.targetMeanVelocity)
+        let kept = reps.filter { !$0.deleted }
+        let bounces = Set(kept.enumerated().filter { $0.element.flag?.hasPrefix("Unusually fast") == true }.map { $0.offset + 1 })
+        return MetricsCalculator.setSummary(loadKg: input.loadKg, systemMassKg: systemMassKg, reps: repMetrics,
+                                            velocityLossThresholdPct: input.velocityLossThresholdPct,
+                                            targetMeanVelocity: input.targetMeanVelocity, notReference: bounces)
     }
 }
 

@@ -29,6 +29,11 @@ GymAware.
   from the edited sets.
   From the second load on, the loads still to come are re-planned from the line so far: a lower
   1RM is taken at once (protects against an overestimated guess), a higher one cautiously.
+- **Live cues while recording**: the plate is tracked during the set (up to 120 times a second)
+  and each rep is counted as it finishes: a tone per rep, a double tone for a likely bounce, and a
+  falling three-tone stop when velocity loss (vs the fastest rep so far, bounces excluded) reaches
+  the cutoff or the rep cap is reached. Optional: say each rep's velocity (Settings). The screen
+  shows the live rep, velocity and loss. The after-set analysis stays the record.
 - **Rep screening** (every set): movements under 70% of the set's typical range (a step back,
   settling, a partial) are left out and marked; reps over 25% faster than the set's median
   (bounce?) or under 60% followed by faster reps (stall?) are kept but marked for review.

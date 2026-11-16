@@ -61,6 +61,8 @@ final class AppModel {
     var loaded = false
     /// Type for the next set recorded or analyzed. Stays until changed, so a whole ramp can be tagged.
     var nextSetType: SetType = .working
+    /// Rep cap for the next recorded set (from the program or a profile-test step), cued live.
+    var nextSetRepCap: Int?
     var selectedTab: AppTab = .today
     /// The training block being followed, if any.
     var program: Program? = ProgramStore.load() { didSet { ProgramStore.save(program) } }
@@ -213,6 +215,8 @@ enum SettingsKey {
     static let velocityLossCutoff = "velocityLossCutoff"  // percent, default for exercises without their own
     static let lastExercise = "lastExercise"
     static let keepSetVideos = "keepSetVideos"     // save recorded sets to Photos
+    static let liveCues = "liveCues"               // tones during the set (default on)
+    static let speakReps = "speakReps"             // say each rep's velocity (default off)
     static let exercisePrefs = "exercisePrefs"     // JSON [exercise id: ExercisePrefs]
 
     static func analysisSettings(_ d: UserDefaults = .standard) -> AnalysisSettings {

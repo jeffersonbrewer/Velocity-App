@@ -49,7 +49,11 @@ struct CameraSetupView: View {
                 camera.start()
                 applyCurrentStep()
             }
-            .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+            .onDisappear {
+                UIApplication.shared.isIdleTimerDisabled = false
+                camera.cues.stop()
+                model.nextSetRepCap = nil
+            }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
             .onReceive(ticker) { now = $0 }
             .sheet(isPresented: $showDetails, onDismiss: refreshTest) {
@@ -93,6 +97,7 @@ struct CameraSetupView: View {
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .background(Theme.bad, in: Capsule())
                     .padding(8)
+                liveOverlay
             }
             if let p = analyzing {
                 VStack(spacing: 10) {
@@ -342,6 +347,53 @@ struct CameraSetupView: View {
         p.loadKg = step.loadKg
         model.prefs[plan.exerciseID] = p
         model.nextSetType = step.isMaxSingle ? .maxSingle : .profileTest
+        model.nextSetRepCap = step.reps
+    }
+
+    /// Live counting settings for the set about to be recorded, or nil with sound cues off.
+    private func liveSettings() -> CameraRecorder.LiveSettings? {
+        let d = UserDefaults.standard
+        guard d.object(forKey: SettingsKey.liveCues) as? Bool ?? true else { return nil }
+        let a = SettingsKey.analysisSettings()
+        // A profile test stops on its rep count, never on velocity loss.
+        return CameraRecorder.LiveSettings(lossCutoffPct: test == nil ? model.lossCutoff(for: model.currentExerciseID) : nil,
+                                           repCap: model.nextSetRepCap, plateDiameterM: a.plateDiameterM,
+                                           cutoffHz: a.cutoffHz, speakReps: d.bool(forKey: SettingsKey.speakReps))
+    }
+
+    /// Live rep count while recording: big enough for a coach beside the phone to read.
+    @ViewBuilder
+    private var liveOverlay: some View {
+        if isRecording {
+            VStack(spacing: 6) {
+                Spacer()
+                if let last = camera.liveReps.last {
+                    Text("Rep \(last.number)  \(Fmt.velocity(last.meanVelocity)) m/s")
+                        .font(.title2.weight(.bold).monospacedDigit())
+                    Text("Loss \(Fmt.percent(last.lossPct))\(last.likelyBounce ? " · bounce?" : "")")
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(last.likelyBounce ? Theme.warn : .white)
+                } else {
+                    Text(camera.liveTracking ? "Tracking the plate" : "Looking for the plate…")
+                        .font(.headline)
+                }
+                if let stop = camera.liveStop {
+                    Text(stopText(stop)).font(.headline).padding(.horizontal, 12).padding(.vertical, 4)
+                        .background(Theme.bad, in: Capsule())
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity)
+            .background(LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .top, endPoint: .bottom))
+            .allowsHitTesting(false)
+        }
+    }
+
+    private func stopText(_ s: LiveRepCounter.StopReason) -> String {
+        switch s {
+        case .lossCutoff(let c): return "STOP: \(Fmt.percent(c)) velocity loss"
+        case .repCap(let n): return "STOP: \(n) rep\(n == 1 ? "" : "s") done"
+        }
     }
 
     /// Leave a rep out or bring it back, then update the test from the edited set.
@@ -381,7 +433,7 @@ struct CameraSetupView: View {
 
     private var recordButton: some View {
         Button {
-            if isRecording { stopAndAnalyze() } else { errorText = nil; camera.startRecording() }
+            if isRecording { stopAndAnalyze() } else { errorText = nil; camera.startRecording(live: liveSettings()) }
         } label: {
             ZStack {
                 Circle().stroke(.white, lineWidth: 4).frame(width: 72, height: 72)
