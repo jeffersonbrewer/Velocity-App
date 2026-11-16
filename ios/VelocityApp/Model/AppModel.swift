@@ -217,6 +217,7 @@ enum SettingsKey {
     static let keepSetVideos = "keepSetVideos"     // save recorded sets to Photos
     static let liveCues = "liveCues"               // tones during the set (default on)
     static let speakReps = "speakReps"             // say each rep's velocity (default off)
+    static let dimWhileRecording = "dimWhileRecording"  // dim the screen during a set (default on)
     static let exercisePrefs = "exercisePrefs"     // JSON [exercise id: ExercisePrefs]
 
     static func analysisSettings(_ d: UserDefaults = .standard) -> AnalysisSettings {

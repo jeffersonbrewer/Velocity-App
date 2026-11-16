@@ -13,6 +13,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.keepSetVideos) private var keepVideos = false
     @AppStorage(SettingsKey.liveCues) private var liveCues = true
     @AppStorage(SettingsKey.speakReps) private var speakReps = false
+    @AppStorage(SettingsKey.dimWhileRecording) private var dimWhileRecording = true
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
@@ -38,8 +39,9 @@ struct SettingsView: View {
                     Toggle("Save set videos to Photos", isOn: $keepVideos)
                     Toggle("Sound cues during the set", isOn: $liveCues)
                     if liveCues { Toggle("Say each rep's velocity", isOn: $speakReps) }
+                    Toggle("Dim the screen while recording", isOn: $dimWhileRecording)
                 } header: { Text("Recording") } footer: {
-                    Text("Videos: off deletes each recorded set once it's analyzed, so videos don't fill your phone; on also saves the 240 fps video to Photos. Sound cues: a tone on each rep, a double tone for a likely bounce, and a falling three-tone stop when velocity loss reaches the cutoff or the rep cap is reached. The live count is for cueing; the results after the set are the record.")
+                    Text("Videos: off deletes each recorded set once it's analyzed, so videos don't fill your phone; on also saves the 240 fps video to Photos. Sound cues: a tone on each rep, a double tone for a likely bounce, and a falling three-tone stop when velocity loss reaches the cutoff or the rep cap is reached. The live count is for cueing; the results after the set are the record. Dimming saves battery and heat; tap the screen to see it for a few seconds.")
                 }
 
                 Section {

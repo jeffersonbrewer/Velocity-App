@@ -21,6 +21,8 @@ struct CameraSetupView: View {
     @State private var adjustNote: String?
     @State private var reviewSetID: UUID?
     @State private var showDetails = false
+    @State private var dimmer = ScreenDimmer()
+    @AppStorage(SettingsKey.dimWhileRecording) private var dimWhileRecording = true
 
     init(test: ProfileTestPlan? = nil) { _test = State(initialValue: test) }
 
@@ -51,11 +53,16 @@ struct CameraSetupView: View {
             }
             .onDisappear {
                 UIApplication.shared.isIdleTimerDisabled = false
+                dimmer.restore()
                 camera.cues.stop()
                 model.nextSetRepCap = nil
             }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
             .onReceive(ticker) { now = $0 }
+            .onChange(of: isRecording) { _, rec in
+                if rec && dimWhileRecording { dimmer.dim() } else { dimmer.restore() }
+            }
+            .simultaneousGesture(TapGesture().onEnded { if dimmer.isDimmed { dimmer.peek() } })
             .sheet(isPresented: $showDetails, onDismiss: refreshTest) {
                 if let id = reviewSetID {
                     NavigationStack {
