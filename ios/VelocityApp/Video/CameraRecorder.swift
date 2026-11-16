@@ -162,12 +162,12 @@ final class CameraRecorder: NSObject, ObservableObject {
         if settings?.sounds == true { cues.start() }
         DispatchQueue.main.async { self.liveReps = []; self.liveStop = nil; self.liveTracking = false; self.liveSettled = false }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("set-\(UUID().uuidString).mov")
-        let settings = output.recommendedVideoSettings(forVideoCodecType: .hevc, assetWriterOutputFileType: .mov)
+        let videoSettings = output.recommendedVideoSettings(forVideoCodecType: .hevc, assetWriterOutputFileType: .mov)
             ?? output.recommendedVideoSettingsForAssetWriter(writingTo: .mov)
         videoQueue.async {
             do {
                 let w = try AVAssetWriter(outputURL: url, fileType: .mov)
-                let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+                let input = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
                 input.expectsMediaDataInRealTime = true
                 // Frames arrive sideways from the sensor; store them upright like the Camera app does.
                 input.transform = CGAffineTransform(rotationAngle: .pi / 2)
