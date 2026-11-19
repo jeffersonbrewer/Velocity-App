@@ -152,7 +152,7 @@ struct AccessoryEditor: View {
             Stepper("\(accessory.sets) sets", value: $accessory.sets, in: 1...6)
             HStack {
                 Stepper("\(accessory.repLow)–\(accessory.repHigh) reps", value: $accessory.repLow, in: 1...max(1, accessory.repHigh))
-                Stepper("", value: $accessory.repHigh, in: accessory.repLow...30).labelsHidden()
+                Stepper("Top of rep range", value: $accessory.repHigh, in: accessory.repLow...30).labelsHidden()
             }
             Stepper("Stop at \(accessory.rir) RIR", value: Binding(get: { accessory.rir }, set: { accessory.targetRIR = $0 }), in: 0...5)
             if e?.takesLoad ?? true {
