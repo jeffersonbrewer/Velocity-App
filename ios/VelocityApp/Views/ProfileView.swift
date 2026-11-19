@@ -24,8 +24,8 @@ struct ProfileView: View {
                 if exercise?.allowsOneRm != false {
                     Card {
                         CardLabel(text: "1RM tested outside the app")
-                        KnownOneRmField(exerciseID: exerciseID, unit: unit)
-                        Text("Lets the Program use this lift before its first profile test. Whichever is newer, this or your last profile test, sets the program's loads. Leave at 0 if you don't have one.")
+                        KnownOneRmField(exerciseID: exerciseID, unit: unit, explicitSave: true)
+                        Text("Lets the Program use this lift before its first profile test. Whichever is newer, this or your last profile test, sets the program's loads. Type it and tap Save. Set it to 0 and Save to remove it.")
                             .font(.caption).foregroundStyle(Theme.muted)
                     }
                 }

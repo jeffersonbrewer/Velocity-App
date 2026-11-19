@@ -197,24 +197,60 @@ struct AccessoryPicker: View {
 }
 
 /// Enter a 1RM tested outside the app, so a lift can be programmed before its first profile test.
+/// With `explicitSave` (the Profile screen) the value is kept only when Save is tapped, and a
+/// short "Known 1RM updated" note confirms it; otherwise it saves as you type.
 struct KnownOneRmField: View {
     let exerciseID: String
     let unit: WeightUnit
+    var explicitSave = false
     @Environment(AppModel.self) private var model
+    @State private var draftKg: Double?
+    @State private var justSaved = false
 
     var body: some View {
         let p = model.prefs(for: exerciseID)
-        VStack(alignment: .leading, spacing: 4) {
-            LoadField(loadKg: Binding(get: { p.knownOneRmKg ?? 0 },
-                                      set: { model.setKnownOneRm(exerciseID, kg: $0) }),
-                      unit: unit, label: "Known 1RM")
-            if let kg = p.knownOneRmKg, let d = p.knownOneRmDate {
-                Label("Saved: \(unit.format(kg: kg)) \(unit.rawValue), \(d.formatted(.dateTime.month(.abbreviated).day()))",
-                      systemImage: "checkmark.circle.fill")
-                    .font(.caption).foregroundStyle(Theme.good)
+        let stored = p.knownOneRmKg ?? 0
+        VStack(alignment: .leading, spacing: 6) {
+            if explicitSave {
+                LoadField(loadKg: Binding(get: { draftKg ?? stored }, set: { draftKg = $0; justSaved = false }),
+                          unit: unit, label: "Known 1RM")
+                let changed = abs((draftKg ?? stored) - stored) > 0.001
+                HStack {
+                    if justSaved {
+                        Label("Known 1RM updated", systemImage: "checkmark.circle.fill")
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.good)
+                            .transition(.opacity)
+                    } else if let kg = p.knownOneRmKg, let d = p.knownOneRmDate {
+                        Text("Saved: \(unit.format(kg: kg)) \(unit.rawValue), \(d.formatted(.dateTime.month(.abbreviated).day()))")
+                            .font(.caption).foregroundStyle(Theme.muted)
+                    }
+                    Spacer()
+                    if changed {
+                        Button("Cancel") { draftKg = nil }.font(.subheadline)
+                    }
+                    Button("Save") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        model.setKnownOneRm(exerciseID, kg: draftKg ?? stored)
+                        draftKg = nil
+                        withAnimation { justSaved = true }
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        Task { try? await Task.sleep(for: .seconds(4)); withAnimation { justSaved = false } }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!changed)
+                }
             } else {
-                Text("Type it and tap Done: it saves on its own.").font(.caption).foregroundStyle(Theme.muted)
+                LoadField(loadKg: Binding(get: { stored }, set: { model.setKnownOneRm(exerciseID, kg: $0) }),
+                          unit: unit, label: "Known 1RM")
+                if let kg = p.knownOneRmKg, let d = p.knownOneRmDate {
+                    Label("Saved: \(unit.format(kg: kg)) \(unit.rawValue), \(d.formatted(.dateTime.month(.abbreviated).day()))",
+                          systemImage: "checkmark.circle.fill")
+                        .font(.caption).foregroundStyle(Theme.good)
+                } else {
+                    Text("Type it and tap Done: it saves on its own.").font(.caption).foregroundStyle(Theme.muted)
+                }
             }
         }
+        .onChange(of: exerciseID) { _, _ in draftKg = nil; justSaved = false }
     }
 }
