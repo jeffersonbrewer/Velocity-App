@@ -69,6 +69,15 @@ struct SettingsView: View {
                 } header: { Text("Measurement") } footer: {
                     Text("Bumper and competition plates are 45 cm across. The 8 Hz filter is the setting validated against GymAware; it stays adjustable while peak velocity is being checked. Changes apply to sets analyzed after the change.")
                 }
+
+                Section {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text("\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"))")
+                            .foregroundStyle(Theme.muted).monospacedDigit()
+                    }
+                }
             }
             .scrollDismissesKeyboard(.interactively)
             .keyboardDoneButton()

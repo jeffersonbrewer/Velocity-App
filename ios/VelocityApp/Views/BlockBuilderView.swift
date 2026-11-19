@@ -203,8 +203,18 @@ struct KnownOneRmField: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        LoadField(loadKg: Binding(get: { model.prefs(for: exerciseID).knownOneRmKg ?? 0 },
-                                  set: { model.setKnownOneRm(exerciseID, kg: $0) }),
-                  unit: unit, label: "Known 1RM")
+        let p = model.prefs(for: exerciseID)
+        VStack(alignment: .leading, spacing: 4) {
+            LoadField(loadKg: Binding(get: { p.knownOneRmKg ?? 0 },
+                                      set: { model.setKnownOneRm(exerciseID, kg: $0) }),
+                      unit: unit, label: "Known 1RM")
+            if let kg = p.knownOneRmKg, let d = p.knownOneRmDate {
+                Label("Saved: \(unit.format(kg: kg)) \(unit.rawValue), \(d.formatted(.dateTime.month(.abbreviated).day()))",
+                      systemImage: "checkmark.circle.fill")
+                    .font(.caption).foregroundStyle(Theme.good)
+            } else {
+                Text("Type it and tap Done: it saves on its own.").font(.caption).foregroundStyle(Theme.muted)
+            }
+        }
     }
 }
