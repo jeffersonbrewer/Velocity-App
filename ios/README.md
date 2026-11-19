@@ -54,6 +54,28 @@ GymAware.
   logs reps and RIR (prefilled with the target); the next load is set from them (Epley with RIR,
   ±15% per session), with double progression as the fallback.
 
+## Build plan (next)
+
+Agreed 2026-11-19 from the first full gym session. Mockups:
+https://claude.ai/artifact/7nwYwVKwbHSP7Pd1UyBGXS
+
+1. **Auto rest timer.** Starts when auto-stop ends a set. A slim banner on the camera screen
+   shows rest time, the rest range and the next set (load, stop rule), without taking over the
+   screen; tap it for a full rest screen with +30 s and Skip. Audio (each switchable): the next
+   load and rep goal at the start of rest, a 30-second warning, and a tone when rest is done.
+2. **Session debrief** after Finish session: one scrolling screen. Top: a one-line verdict,
+   readiness and load-change labels, "How it went" and "What it means" in plain words. Middle:
+   readiness, best rep, average loss and reps tiles, the estimated 1RM trend and the block
+   progress strip. Then a link to the set-by-set view, the next session and recovery notes.
+3. **Calendar button** on the debrief: names the next planned session ("Add Monday to
+   Calendar"); "Schedule next session" with a suggested day when none is planned; shows
+   "Thursday, 6:00 AM · in Calendar" once added or when Calendar sync is on. The event carries
+   the session, main lift and expected load, and updates when the session moves or is skipped.
+4. **Weekly schedule**: set up with "Plan my week" (training days, usual times, spacing check,
+   keep in Calendar with a reminder); the everyday view is the week list (drag to move, add the
+   week or the whole block to Calendar).
+5. Later: review the accessory exercises with Jefferson.
+
 ## Updating to a new version
 
 Quit Xcode, rename your old `velocity-app` folder (for example to `velocity-app-old`), unzip the
