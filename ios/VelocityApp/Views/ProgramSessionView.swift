@@ -23,6 +23,7 @@ struct ProgramSessionView: View {
             }
         }
         .background(Theme.background)
+        .keyboardDoneButton()
         .navigationTitle("Today's session")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }

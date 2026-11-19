@@ -56,8 +56,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Plate diameter")
                         Spacer()
-                        TextField("45", value: $plateCm, format: .number.precision(.fractionLength(0...1)))
-                            .keyboardType(.decimalPad)
+                        NumberField(value: $plateCm, fractionDigits: 1, placeholder: "45")
                             .multilineTextAlignment(.trailing)
                             .fixedSize()
                         Text("cm").foregroundStyle(Theme.muted)

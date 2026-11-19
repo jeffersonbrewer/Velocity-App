@@ -56,6 +56,7 @@ struct CameraSetupView: View {
                 dimmer.restore()
                 camera.cues.stop()
                 model.nextSetRepCap = nil
+                model.sessionTargets = nil
             }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
             .onReceive(ticker) { now = $0 }

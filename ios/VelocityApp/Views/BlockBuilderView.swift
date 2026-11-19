@@ -52,7 +52,7 @@ struct BlockBuilderView: View {
                             AccessoryEditor(accessory: $a, goal: day.goal, unit: unit)
                         }
                         .onDelete { day.accessories.remove(atOffsets: $0) }
-                        AccessoryPicker(title: "Add accessory") { e in
+                        AccessoryPicker(title: "Add accessory", fullWidth: true) { e in
                             day.accessories.append(AccessoryLibrary.plan(e, goal: day.goal, unit: unit))
                         }
                         Button("Suggest accessories") {
@@ -169,10 +169,11 @@ struct AccessoryEditor: View {
 /// Library menu grouped by movement pattern, with combos and a typed option.
 struct AccessoryPicker: View {
     let title: String
+    var fullWidth = false
     let onPick: (AccessoryExercise?) -> Void
 
     var body: some View {
-        Menu(title) {
+        Menu {
             Menu("Combos") {
                 ForEach(AccessoryLibraryData.all.filter(\.isCombo)) { e in Button(e.name) { onPick(e) } }
             }
@@ -185,6 +186,12 @@ struct AccessoryPicker: View {
                 }
             }
             Button("Other (type a name)") { onPick(nil) }
+        } label: {
+            if fullWidth {
+                Label(title, systemImage: "plus.circle").frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            } else {
+                Text(title)
+            }
         }
     }
 }

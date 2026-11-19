@@ -119,10 +119,11 @@ extension AppModel {
         var p = prefs(for: id)
         p.loadKg = loadKg
         nextSetRepCap = plan.prescription.repCapPerSet
-        p.lossCutoffPct = plan.prescription.lossCutoffPct
-        p.targetLow = plan.prescription.zoneLow.map { ($0 * 100).rounded() / 100 }
-        p.targetHigh = plan.prescription.zoneHigh.map { ($0 * 100).rounded() / 100 }
         prefs[id] = p
+        let lo = plan.prescription.zoneLow.map { ($0 * 100).rounded() / 100 }
+        let hi = plan.prescription.zoneHigh.map { ($0 * 100).rounded() / 100 }
+        sessionTargets = SessionTargets(exerciseID: id, lossCutoffPct: plan.prescription.lossCutoffPct,
+                                        zone: lo.flatMap { l in hi.flatMap { h in l < h ? l...h : nil } })
     }
 
     /// Close today's session: advance the block, and set each accessory's next load from its reps and RIR.

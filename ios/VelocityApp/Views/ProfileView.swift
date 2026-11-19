@@ -35,6 +35,8 @@ struct ProfileView: View {
             .padding()
         }
         .background(Theme.background)
+        .scrollDismissesKeyboard(.interactively)
+        .keyboardDoneButton()
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

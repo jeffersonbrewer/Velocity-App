@@ -104,6 +104,47 @@ struct SetDetailsView: View {
     }
 }
 
+/// A number typed on the decimal pad. It keeps its own text while you type (so a field can be
+/// cleared, and "102." keeps its point) and passes each valid number on; it shows the value
+/// formatted again once you leave it. A cleared field counts as 0.
+struct NumberField: View {
+    @Binding var value: Double
+    var fractionDigits = 2
+    var placeholder = "0"
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .keyboardType(.decimalPad)
+            .focused($focused)
+            .onAppear { text = Self.format(value, fractionDigits) }
+            .onChange(of: value) { _, v in if !focused { text = Self.format(v, fractionDigits) } }
+            .onChange(of: text) { _, t in
+                guard focused, let v = Self.parse(t) else { return }
+                if v != value { value = v }
+            }
+            .onChange(of: focused) { _, f in
+                guard !f else { return }
+                if text.trimmingCharacters(in: .whitespaces).isEmpty { value = 0 }
+                text = Self.format(value, fractionDigits)
+            }
+    }
+
+    static func format(_ v: Double, _ digits: Int) -> String {
+        v.formatted(.number.precision(.fractionLength(0...digits)).grouping(.never))
+    }
+
+    static func parse(_ t: String) -> Double? {
+        let sep = Locale.current.decimalSeparator ?? "."
+        let s = t.replacingOccurrences(of: Locale.current.groupingSeparator ?? ",", with: sep == "," ? "," : "")
+                 .replacingOccurrences(of: sep, with: ".")
+                 .trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty, let v = Double(s), v.isFinite, v >= 0 else { return nil }
+        return v
+    }
+}
+
 /// Load entry: type it or step it by 2.5 kg / 5 lb. The field grows with its text so decimals
 /// such as 102.5 are never cut off.
 struct LoadField: View {
@@ -121,8 +162,7 @@ struct LoadField: View {
             Button { loadKg = max(0, unit.toKg(shown.wrappedValue - unit.step)) } label: { Image(systemName: "minus") }
                 .buttonStyle(.bordered)
                 .accessibilityLabel("Decrease load")
-            TextField("Load", value: shown, format: .number.precision(.fractionLength(0...2)))
-                .keyboardType(.decimalPad)
+            NumberField(value: shown, fractionDigits: 2, placeholder: "Load")
                 .multilineTextAlignment(.center)
                 .font(.title3.weight(.semibold).monospacedDigit())
                 .fixedSize()
@@ -146,8 +186,7 @@ struct BodyMassField: View {
         HStack {
             Text("Body mass")
             Spacer()
-            TextField("0", value: shown, format: .number.precision(.fractionLength(0...1)))
-                .keyboardType(.decimalPad)
+            NumberField(value: shown, fractionDigits: 1)
                 .multilineTextAlignment(.trailing)
                 .fixedSize()
                 .frame(minWidth: 44)

@@ -63,6 +63,9 @@ final class AppModel {
     var nextSetType: SetType = .working
     /// Rep cap for the next recorded set (from the program or a profile-test step), cued live.
     var nextSetRepCap: Int?
+    /// A program session's cutoff and zone for its main lift, used while its camera is open
+    /// without changing the lift's own targets on Today.
+    var sessionTargets: SessionTargets?
     var selectedTab: AppTab = .today
     /// The training block being followed, if any.
     var program: Program? = ProgramStore.load() { didSet { ProgramStore.save(program) } }
@@ -186,16 +189,22 @@ final class AppModel {
     }
 
     func lossCutoff(for id: String) -> Double? {
+        if let t = sessionTargets, t.exerciseID == id { return t.lossCutoffPct.flatMap { $0 > 0 ? $0 : nil } }
         let global = UserDefaults.standard.object(forKey: SettingsKey.velocityLossCutoff) as? Double ?? 20
         let v = prefs(for: id).lossCutoffPct ?? global
         return v > 0 ? v : nil
+    }
+
+    func targetZone(for id: String) -> ClosedRange<Double>? {
+        if let t = sessionTargets, t.exerciseID == id { return t.zone }
+        return prefs(for: id).targetZone
     }
 
     func setInput(exerciseID id: String, loadKg: Double) -> SetInput {
         let ex = ExerciseCatalog.exercise(id: id) ?? ExerciseCatalog.all[0]
         let bm = UserDefaults.standard.double(forKey: SettingsKey.bodyMassKg)
         return SetInput(exercise: ex, loadKg: loadKg, bodyMassKg: bm > 0 ? bm : nil,
-                        velocityLossThresholdPct: lossCutoff(for: id), targetMeanVelocity: prefs(for: id).targetZone)
+                        velocityLossThresholdPct: lossCutoff(for: id), targetMeanVelocity: targetZone(for: id))
     }
 
     private func savePrefs() {
@@ -234,4 +243,11 @@ enum SettingsKey {
         let tilt = d.object(forKey: tiltCorrection) as? Bool ?? true
         return AnalysisSettings(plateDiameterM: plateCm / 100, cutoffHz: cutoff, tiltCorrection: tilt)
     }
+}
+
+/// Targets a program session sets for one set, kept apart from the lift's saved targets.
+struct SessionTargets {
+    var exerciseID: String
+    var lossCutoffPct: Double?
+    var zone: ClosedRange<Double>?
 }

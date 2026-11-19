@@ -149,6 +149,7 @@ struct TodayView: View {
                     }
                     Image(systemName: "chevron.right").foregroundStyle(Theme.muted)
                 }
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityHint("Edit the target zone and velocity-loss cutoff")
@@ -193,8 +194,7 @@ struct TodayView: View {
     private var profileStrip: some View {
         let id = model.currentExerciseID
         let prof = model.profile(for: id)
-        if prof.lastTestDate != nil {
-            NavigationLink(value: TodayRoute.profile(id)) {
+        NavigationLink(value: TodayRoute.profile(id)) {
                 Card {
                     HStack {
                         CardLabel(text: "Strength profile")
@@ -208,6 +208,10 @@ struct TodayView: View {
                         Text(prof.oneRmKg.map { "\(unit.format(kg: unit.roundedToStep(kg: $0))) \(unit.rawValue)" } ?? "–").monospacedDigit()
                     }
                     .font(.subheadline)
+                    if prof.lastTestDate == nil {
+                        Text("No profile test yet. Open to enter a known 1RM, edit your 1RM velocity or start a guided test.")
+                            .font(.caption).foregroundStyle(Theme.muted)
+                    }
                     if let r = model.readinessToday(for: id) {
                         HStack {
                             Text("Readiness from first set").foregroundStyle(Theme.muted)
@@ -219,7 +223,6 @@ struct TodayView: View {
                 }
             }
             .buttonStyle(.plain)
-        }
     }
 
     private func summaryTiles(_ today: [AnalyzedSet]) -> some View {
