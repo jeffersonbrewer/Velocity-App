@@ -240,6 +240,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Velocity;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Velocity adds your planned training sessions to Calendar and moves them when your plan changes.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Velocity films your sets in slow motion to measure bar speed.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Velocity can save your set videos to Photos if you turn that on in Settings.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Velocity reads the full-speed original of your slow-motion set videos to measure bar speed.";
@@ -251,7 +252,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.14;
+				MARKETING_VERSION = 0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jeffersonbrewer.velocity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -270,6 +271,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Velocity;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Velocity adds your planned training sessions to Calendar and moves them when your plan changes.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Velocity films your sets in slow motion to measure bar speed.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Velocity can save your set videos to Photos if you turn that on in Settings.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Velocity reads the full-speed original of your slow-motion set videos to measure bar speed.";
@@ -281,7 +283,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.14;
+				MARKETING_VERSION = 0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jeffersonbrewer.velocity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

@@ -28,6 +28,15 @@ struct Program: Codable, Hashable {
     var days: [ProgramDay]
     var progress = BlockProgress()
     var log: [ProgramSessionLog] = []
+    /// Training days and times; nil until the lifter plans their week.
+    var schedule: WeekSchedule?
+    /// Sessions moved by hand and Calendar events, by planned-session key.
+    /// (Optional so program files saved before v0.15 still load.)
+    var calendarState: SessionCalendar?
+    var calendar: SessionCalendar {
+        get { calendarState ?? SessionCalendar() }
+        set { calendarState = newValue }
+    }
 
     var currentDay: ProgramDay? { progress.finished || days.isEmpty ? nil : days[min(progress.day, days.count - 1)] }
 

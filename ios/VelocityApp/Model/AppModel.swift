@@ -69,6 +69,8 @@ final class AppModel {
     var selectedTab: AppTab = .today
     /// The training block being followed, if any.
     var program: Program? = ProgramStore.load() { didSet { ProgramStore.save(program) } }
+    /// Debriefs of finished program sessions, newest first.
+    var debriefs: [SessionDebrief] = DebriefStore.load() { didSet { DebriefStore.save(debriefs) } }
 
     private let store: SetStore
 

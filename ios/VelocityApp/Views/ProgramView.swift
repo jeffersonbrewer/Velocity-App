@@ -9,6 +9,7 @@ struct ProgramView: View {
     @State private var building = false
     @State private var testingExercise: String?
     @State private var confirmEnd = false
+    @State private var showAllDebriefs = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
@@ -38,6 +39,8 @@ struct ProgramView: View {
             }
             .navigationDestination(for: String.self) { _ in ProgramSessionView() }
             .navigationDestination(for: UUID.self) { id in SetResultsView(setID: id) }
+            .navigationDestination(for: DebriefRoute.self) { r in DebriefView(debriefID: r.id) }
+            .task { await model.syncCalendar(only: nil) }
             .sheet(isPresented: $building) { BlockBuilderView(existing: model.program) }
             .sheet(item: Binding(get: { testingExercise.map(IdentifiedString.init) }, set: { testingExercise = $0?.value })) { item in
                 ProfileTestSetupView(exerciseID: item.value)
@@ -96,6 +99,8 @@ struct ProgramView: View {
             todayCard(program)
         }
 
+        WeekScheduleCard()
+
         ForEach(mainLifts(program), id: \.self) { id in
             if let change = model.profileDrift(id) {
                 Card {
@@ -110,6 +115,19 @@ struct ProgramView: View {
         }
 
         weeksCard(program)
+
+        if !model.debriefs.isEmpty {
+            Card {
+                CardLabel(text: "Past sessions")
+                ForEach(model.debriefs.prefix(showAllDebriefs ? 200 : 4)) { d in
+                    NavigationLink(value: DebriefRoute(id: d.id)) { DebriefRow(debrief: d) }.buttonStyle(.plain)
+                }
+                if model.debriefs.count > 4 {
+                    Button(showAllDebriefs ? "Show fewer" : "Show all \(model.debriefs.count)") { showAllDebriefs.toggle() }
+                        .font(.subheadline)
+                }
+            }
+        }
     }
 
     private func todayCard(_ program: Program) -> some View {
@@ -180,4 +198,26 @@ struct ProgramView: View {
 struct IdentifiedString: Identifiable {
     let value: String
     var id: String { value }
+}
+
+/// Opens a session debrief.
+struct DebriefRoute: Hashable { let id: UUID }
+
+/// One past program session in a list.
+struct DebriefRow: View {
+    let debrief: SessionDebrief
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(debrief.dayName) · \(debrief.liftName)").font(.subheadline.weight(.semibold))
+                Text("\(debrief.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))) · \(DebriefText.verdict(debrief))")
+                    .font(.caption).foregroundStyle(Theme.muted).lineLimit(1)
+            }
+            Spacer()
+            if let r = debrief.readiness { Pill(text: r.rawValue, color: readinessColor(r)) }
+            Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.muted)
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+    }
 }

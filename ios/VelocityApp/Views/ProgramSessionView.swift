@@ -10,12 +10,15 @@ struct ProgramSessionView: View {
     @State private var accessoryLog: [UUID: [AccessorySet]] = [:]
     @State private var accessoryLoad: [UUID: Double] = [:]
     @State private var confirmFinish = false
+    @State private var finished: UUID?
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
     var body: some View {
         Group {
-            if let plan = model.sessionPlan() {
+            if let finished {
+                DebriefView(debriefID: finished)
+            } else if let plan = model.sessionPlan() {
                 content(plan)
             } else {
                 ContentUnavailableView("No session today", systemImage: "calendar",
@@ -24,7 +27,7 @@ struct ProgramSessionView: View {
         }
         .background(Theme.background)
         .keyboardDoneButton()
-        .navigationTitle("Today's session")
+        .navigationTitle(finished == nil ? "Today's session" : "Session debrief")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
     }
@@ -132,11 +135,11 @@ struct ProgramSessionView: View {
                 .controlSize(.large)
                 .confirmationDialog("Finish today's session?", isPresented: $confirmFinish, titleVisibility: .visible) {
                     Button("Finish session") {
-                        model.finishSession(plan, accessoryLog: accessoryLog, loadsUsed: accessoryLoad)
-                        dismiss()
+                        finished = model.finishSession(plan, accessoryLog: accessoryLog, loadsUsed: accessoryLoad)?.id
+                        if finished == nil { dismiss() }
                     }
                 } message: {
-                    Text("The program moves to the next session, and each accessory's next load is set from today's reps and RIR.")
+                    Text("The program moves to the next session, each accessory's next load is set from today's reps and RIR, and you get a debrief of the session.")
                 }
             }
             .padding()

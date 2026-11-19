@@ -127,8 +127,11 @@ extension AppModel {
     }
 
     /// Close today's session: advance the block, and set each accessory's next load from its reps and RIR.
-    func finishSession(_ plan: SessionPlan, accessoryLog: [UUID: [AccessorySet]], loadsUsed: [UUID: Double]) {
-        guard var program else { return }
+    /// Returns the session's debrief.
+    @discardableResult
+    func finishSession(_ plan: SessionPlan, accessoryLog: [UUID: [AccessorySet]], loadsUsed: [UUID: Double]) -> SessionDebrief? {
+        guard var program else { return nil }
+        var debrief = makeDebrief(plan, accessoryLog: accessoryLog)
         let dayIndex = program.progress.day
         program.log.append(ProgramSessionLog(date: Date(), week: program.progress.week, dayIndex: dayIndex,
                                              deload: plan.week.isDeload, reading: plan.readiness))
@@ -144,6 +147,10 @@ extension AppModel {
         }
         program.progress.finishSession(reading: plan.readiness, weeks: program.weeks, daysPerWeek: program.days.count)
         self.program = program
+        addNext(to: &debrief)
+        debriefs.insert(debrief, at: 0)
+        Task { await syncCalendar(only: nil) }
+        return debrief
     }
 
     /// Average change in 1RM that recent working sets imply, when it's large enough to suggest a retest.

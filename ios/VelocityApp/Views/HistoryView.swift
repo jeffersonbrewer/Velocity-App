@@ -31,6 +31,9 @@ struct HistoryView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(day.formatted(date: .complete, time: .omitted)).font(.headline)
                                 Text(sessionSummary(sets)).font(.subheadline).foregroundStyle(Theme.muted)
+                                if model.debriefs.contains(where: { Calendar.current.isDate($0.date, inSameDayAs: day) }) {
+                                    Label("Debrief", systemImage: "doc.text").font(.caption).foregroundStyle(Theme.accent)
+                                }
                             }
                         }
                     }
@@ -58,6 +61,7 @@ struct HistoryView: View {
                 }
             }
             .navigationDestination(for: UUID.self) { id in SetResultsView(setID: id) }
+            .navigationDestination(for: DebriefRoute.self) { r in DebriefView(debriefID: r.id) }
         }
     }
 
@@ -85,6 +89,15 @@ struct SessionView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
+                ForEach(model.debriefs.filter { Calendar.current.isDate($0.date, inSameDayAs: day) }) { d in
+                    NavigationLink(value: DebriefRoute(id: d.id)) {
+                        Card {
+                            CardLabel(text: "Session debrief")
+                            DebriefRow(debrief: d)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
                 ForEach(model.sets(on: day).reversed()) { set in
                     NavigationLink(value: set.id) { SetRow(set: set, unit: unit) }
                         .buttonStyle(.plain)

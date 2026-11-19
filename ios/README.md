@@ -56,6 +56,9 @@ GymAware.
 
 ## Build plan (next)
 
+v0.15 adds 2 (debrief, also under Program › Past sessions and History › Sessions), 3 (calendar button)
+and 4 (Program › This week, Plan my week; tap a session to move it instead of dragging). 1 is next.
+
 Agreed 2026-11-19 from the first full gym session. Mockups:
 https://claude.ai/artifact/7nwYwVKwbHSP7Pd1UyBGXS
 
