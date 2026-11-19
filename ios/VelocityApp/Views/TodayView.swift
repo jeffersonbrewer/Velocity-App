@@ -199,7 +199,7 @@ struct TodayView: View {
                     HStack {
                         CardLabel(text: "Strength profile")
                         Spacer()
-                        if prof.retestReason() != nil { Pill(text: "Retest suggested", color: Theme.warn) }
+                        if prof.lastTestDate != nil, prof.retestReason() != nil { Pill(text: "Retest suggested", color: Theme.warn) }
                         Image(systemName: "chevron.right").foregroundStyle(Theme.muted)
                     }
                     HStack {
