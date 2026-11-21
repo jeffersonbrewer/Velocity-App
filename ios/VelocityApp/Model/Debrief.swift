@@ -42,6 +42,8 @@ struct SessionDebrief: Codable, Hashable, Identifiable {
     var nextDeload: Bool?
     var nextWeek: Int?
     var event: String?
+    /// Each accessory: what was done today and the load set for next time. (Nil in debriefs saved before v0.17.)
+    var accessories: [AccessoryChange]?
 
     var liftName: String { ExerciseCatalog.exercise(id: exerciseID)?.name ?? exerciseID }
     var bestMVChange: Double? { bestMV.flatMap { b in compareMV.map { b - $0 } } }
@@ -126,6 +128,23 @@ extension AppModel {
     }
 }
 
+/// One accessory's result today and its next load.
+struct AccessoryChange: Codable, Hashable {
+    var name: String
+    var usedKg: Double
+    var nextKg: Double
+    var reps: [Int]
+    var rirs: [Int?]
+    var repLow: Int
+    var repHigh: Int
+    var targetRIR: Int
+    var setsPlanned: Int
+    var eachHand: Bool
+    var note: String?
+
+    var takesLoad: Bool { usedKg > 0 || nextKg > 0 }
+}
+
 /// The plain-words parts of a debrief.
 enum DebriefText {
     static func verdict(_ d: SessionDebrief) -> String {
@@ -174,7 +193,7 @@ enum DebriefText {
                                 near ? ", so they stopped where they should" : ", so you kept plenty in reserve"))
             }
         }
-        if d.accessoriesLogged > 0 { s.append("\(d.accessoriesLogged) accessor\(d.accessoriesLogged == 1 ? "y" : "ies") logged; their next loads are set.") }
+        if d.accessoriesLogged > 0 { s.append("\(d.accessoriesLogged) accessor\(d.accessoriesLogged == 1 ? "y" : "ies") logged; their next loads are listed below.") }
         return s.joined(separator: " ")
     }
 
@@ -197,6 +216,58 @@ enum DebriefText {
             s.append("Your estimated 1RM is holding at \(orm), on track for week \(d.week) of \(d.weeks).")
         }
         return s.joined(separator: " ")
+    }
+
+    enum Change { case up, down, same, addLoad, notDone }
+
+    /// Option B row: today's load and reps, a change tag, and next time's load.
+    static func accessoryRow(_ a: AccessoryChange, unit u: WeightUnit) -> (today: String, tag: String, next: String, change: Change) {
+        let each = a.eachHand ? " each" : ""
+        let load = { (kg: Double) in kg > 0 ? "\(u.format(kg: kg)) \(u.rawValue)\(each)" : "bodyweight" }
+        let done = a.reps.filter { $0 > 0 }
+        guard !done.isEmpty else {
+            return (a.setsPlanned == 0 ? "Skipped today" : "Not logged", "same", load(a.usedKg), .notDone)
+        }
+        let r = a.rirs.prefix(a.reps.count).compactMap { $0 }
+        let rir = r.isEmpty ? "" : (r.min() == r.max() ? " @ RIR \(r.min()!)" : " @ RIR \(r.min()!)–\(r.max()!)")
+        let today = "\(load(a.usedKg)) · \(done.map(String.init).joined(separator: ", "))\(rir)"
+        if !a.takesLoad {
+            return (today, a.note != nil ? "add load" : "same", "bodyweight", a.note != nil ? .addLoad : .same)
+        }
+        let diff = a.nextKg - a.usedKg
+        if abs(u.fromKg(diff)) < 0.01 { return (today, "same", load(a.nextKg), .same) }
+        let tag = (diff > 0 ? "+" : "−") + "\(u.format(kg: abs(diff))) \(u.rawValue)"
+        return (today, tag, load(a.nextKg), diff > 0 ? .up : .down)
+    }
+
+    /// One line per accessory: how today went and how the load changes next time.
+    static func accessory(_ a: AccessoryChange, unit u: WeightUnit) -> String {
+        let done = a.reps.filter { $0 > 0 }
+        guard !done.isEmpty else {
+            if a.setsPlanned == 0 { return "Skipped today. The load stays the same next time." }
+            return "Not logged today, so the load stays the same next time."
+        }
+        let rirText: String = {
+            let r = a.rirs.prefix(a.reps.count).compactMap { $0 }
+            guard !r.isEmpty else { return "" }
+            let lo = r.min()!, hi = r.max()!
+            return lo == hi ? " at RIR \(lo)" : " at RIR \(lo)–\(hi)"
+        }()
+        let today = "\(done.map(String.init).joined(separator: ", ")) reps\(rirText) (aim \(a.repLow)–\(a.repHigh) at RIR \(a.targetRIR))."
+        let each = a.eachHand ? " each" : ""
+        guard a.takesLoad else {
+            if let n = a.note { return today + " " + n.replacingOccurrences(of: "\(a.name): ", with: "") }
+            return today + " Bodyweight: keep going until every set reaches \(a.repHigh)."
+        }
+        let diff = a.nextKg - a.usedKg
+        let next = "\(u.format(kg: a.nextKg)) \(u.rawValue)\(each)"
+        if abs(u.fromKg(diff)) < 0.01 {
+            return today + " Stays at \(next): right on target."
+        } else if diff > 0 {
+            return today + " Up \(u.format(kg: diff)) \(u.rawValue) to \(next): you had more in reserve than planned."
+        } else {
+            return today + " Down \(u.format(kg: -diff)) \(u.rawValue) to \(next): the sets were harder than planned."
+        }
     }
 
     static func recovery(_ d: SessionDebrief) -> String {

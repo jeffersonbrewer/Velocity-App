@@ -137,13 +137,21 @@ extension AppModel {
                                              deload: plan.week.isDeload, reading: plan.readiness))
         let u = unit
         if let i = program.days.firstIndex(where: { $0.id == plan.day.id }) {
+            var changes: [AccessoryChange] = []
             program.days[i].accessories = program.days[i].accessories.map { a in
                 var today = a
                 if let used = loadsUsed[a.id] { today.loadKg = used }
                 let step = max(a.stepKg, 0.1)
                 let round = { (kg: Double) in u.toKg((u.fromKg(kg) / u.fromKg(step)).rounded() * u.fromKg(step)) }
-                return today.next(after: accessoryLog[a.id] ?? [], round: round).plan
+                let log = accessoryLog[a.id] ?? []
+                let r = today.next(after: log, round: round)
+                changes.append(AccessoryChange(name: a.name, usedKg: today.loadKg, nextKg: r.plan.loadKg, reps: log.map(\.reps),
+                                               rirs: log.map { $0.rir ?? a.rir }, repLow: a.repLow, repHigh: a.repHigh,
+                                               targetRIR: a.rir, setsPlanned: a.sets(for: plan.readiness),
+                                               eachHand: a.exercise?.equipment == .dumbbell, note: r.note))
+                return r.plan
             }
+            debrief.accessories = changes
         }
         program.progress.finishSession(reading: plan.readiness, weeks: program.weeks, daysPerWeek: program.days.count)
         self.program = program

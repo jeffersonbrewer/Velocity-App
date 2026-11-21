@@ -133,6 +133,34 @@ struct DebriefView: View {
                     }
                 }
 
+                if let acc = d.accessories, !acc.isEmpty {
+                    Card {
+                        CardLabel(text: "Accessories next time")
+                        ForEach(Array(acc.enumerated()), id: \.offset) { _, a in
+                            let row = DebriefText.accessoryRow(a, unit: unit)
+                            let color = changeColor(row.change)
+                            Divider().overlay(Theme.line)
+                            HStack(alignment: .top, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(a.name).font(.subheadline.weight(.semibold))
+                                    Text(row.today).font(.caption).foregroundStyle(Theme.muted)
+                                }
+                                Spacer(minLength: 4)
+                                VStack(alignment: .trailing, spacing: 4) {
+                                    Pill(text: changeSymbol(row.change) + row.tag, color: color)
+                                    Text(row.next).font(.subheadline.weight(.semibold)).monospacedDigit()
+                                        .foregroundStyle(row.change == .same || row.change == .notDone ? Color.primary : color)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(a.name). Today \(row.today). Next time \(row.next), \(row.tag).")
+                        }
+                        Text("Loads come from your reps and reps in reserve: more in reserve than planned moves the load up, less moves it down.")
+                            .font(.caption).foregroundStyle(Theme.muted)
+                    }
+                }
+
                 nextCard(d)
 
                 Card {
@@ -216,6 +244,23 @@ struct DebriefView: View {
         var s = s
         s.date = Calendar.current.date(byAdding: .day, value: 2, to: date)
         return s
+    }
+
+    private func changeColor(_ c: DebriefText.Change) -> Color {
+        switch c {
+        case .up: return Theme.good
+        case .down: return Theme.warn
+        case .addLoad: return Theme.accent
+        case .same, .notDone: return Theme.muted
+        }
+    }
+
+    private func changeSymbol(_ c: DebriefText.Change) -> String {
+        switch c {
+        case .up, .addLoad: return "▲ "
+        case .down: return "▼ "
+        case .same, .notDone: return "= "
+        }
     }
 
     private func trendNote(_ t: [(date: Date, kg: Double)]) -> String {
