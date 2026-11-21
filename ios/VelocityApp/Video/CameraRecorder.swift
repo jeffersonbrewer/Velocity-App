@@ -20,6 +20,13 @@ final class CameraRecorder: NSObject, ObservableObject {
     @Published private(set) var frameRate: Double = 0
     /// Latest plate found by the plate check, in upright image pixels.
     @Published private(set) var plate: PlateCircle?
+    /// Every plate the check found, strongest first (more than one when plates lie around the gym).
+    @Published private(set) var plates: [PlateCircle] = []
+    /// Where the lifter tapped to pick the bar's plate, in upright image pixels. Followed by the
+    /// plate check, then handed to tracking so it never locks onto another plate.
+    @Published var plateHint: CGPoint?
+    /// The hint used for the last recording, for the after-set analysis.
+    private(set) var recordedHint: CGPoint?
     @Published private(set) var imageSize: CGSize = .zero
     /// Phone tilt in degrees: forward/back (pitch) and sideways (roll). 0 and 0 is upright and level.
     @Published private(set) var pitch: Double = 0
@@ -161,6 +168,8 @@ final class CameraRecorder: NSObject, ObservableObject {
         guard state == .ready else { return }
         if settings?.sounds == true { cues.start() }
         DispatchQueue.main.async { self.liveReps = []; self.liveStop = nil; self.liveTracking = false; self.liveSettled = false }
+        let hint = plateHint ?? plate.map { CGPoint(x: $0.x, y: $0.y) }
+        recordedHint = hint
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("set-\(UUID().uuidString).mov")
         let videoSettings = output.recommendedVideoSettings(forVideoCodecType: .hevc, assetWriterOutputFileType: .mov)
             ?? output.recommendedVideoSettingsForAssetWriter(writingTo: .mov)
@@ -180,7 +189,7 @@ final class CameraRecorder: NSObject, ObservableObject {
                 self.recordingURL = url
                 self.dropped = 0
                 if let settings {
-                    self.live = (PlateTracker(), LiveRepCounter(plateDiameterM: settings.plateDiameterM, cutoffHz: settings.cutoffHz,
+                    self.live = (PlateTracker(hint: hint.map { (Double($0.x), Double($0.y)) }), LiveRepCounter(plateDiameterM: settings.plateDiameterM, cutoffHz: settings.cutoffHz,
                                                                 lossCutoffPct: settings.lossCutoffPct, repCap: settings.repCap,
                                                                 settleSeconds: settings.settleSeconds), settings)
                     self.lastLiveTime = -Double.infinity
@@ -296,8 +305,9 @@ extension CameraRecorder: AVCaptureVideoDataOutputSampleBufferDelegate {
                 height: CVPixelBufferGetHeightOfPlane(pixels, 0),
                 bytesPerRow: CVPixelBufferGetBytesPerRowOfPlane(pixels, 0),
                 rotationCW: 90)
-            CVPixelBufferUnlockBaseAddress(pixels, .readOnly)
+            // Keep the buffer locked while the tracker reads it.
             let circle = live.tracker.add(image, time: time)
+            CVPixelBufferUnlockBaseAddress(pixels, .readOnly)
             let events = circle.map { live.counter.add(time: time, yPixels: $0.y, radiusPx: $0.r) } ?? []
             let found = circle != nil
             let settled = live.counter.settled
@@ -329,9 +339,23 @@ extension CameraRecorder: AVCaptureVideoDataOutputSampleBufferDelegate {
             rotationCW: 90)
         checking = true
         checkQueue.async {
-            let found = PlateDetector.detect(image)
+            let all = PlateDetector.detectAll(image, maxCount: 4)
             DispatchQueue.main.async {
-                self.plate = found
+                self.plates = all
+                var chosen = all.first
+                if let h = self.plateHint {
+                    // Follow the picked plate as it moves a little; if it's out of view, show none.
+                    let near = all.min { hypot($0.x - h.x, $0.y - h.y) < hypot($1.x - h.x, $1.y - h.y) }
+                    if let n = near, hypot(n.x - h.x, n.y - h.y) <= 1.5 * n.r {
+                        chosen = n
+                        self.plateHint = CGPoint(x: n.x, y: n.y)
+                    } else if all.count <= 1 {
+                        self.plateHint = nil   // only one plate in view now: no need to pick
+                    } else {
+                        chosen = nil
+                    }
+                }
+                self.plate = chosen
                 self.imageSize = CGSize(width: image.width, height: image.height)
             }
             self.videoQueue.async { self.checking = false }

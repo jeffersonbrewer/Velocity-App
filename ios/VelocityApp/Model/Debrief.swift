@@ -129,7 +129,7 @@ extension AppModel {
 /// The plain-words parts of a debrief.
 enum DebriefText {
     static func verdict(_ d: SessionDebrief) -> String {
-        if d.setIDs.isEmpty { return "Session closed without working sets" }
+        if d.setIDs.isEmpty { return "Main lift not recorded today" }
         if d.deload { return "Deload session done" }
         switch d.readiness {
         case .wellDown?, .down?: return "Tough day, and you adjusted well"
@@ -179,6 +179,9 @@ enum DebriefText {
     }
 
     static func whatItMeans(_ d: SessionDebrief, unit u: WeightUnit) -> String {
+        if d.setIDs.isEmpty {
+            return "With no \(d.liftName.lowercased()) sets recorded there's nothing to judge today, so your 1RM (\(u.format(kg: d.oneRmKg)) \(u.rawValue)) and next loads stay as they were. The block has moved on to the next session."
+        }
         var s: [String] = []
         if let change = d.bestMVChange, let load = d.bestMVLoadKg, let when = d.compareDate {
             let dir = abs(change) < 0.015 ? "the same as" : (change > 0 ? String(format: "up %.2f m/s on", change) : String(format: "down %.2f m/s on", -change))
@@ -197,6 +200,7 @@ enum DebriefText {
     }
 
     static func recovery(_ d: SessionDebrief) -> String {
+        if d.setIDs.isEmpty { return "Usual sleep and protein." }
         switch d.readiness {
         case .down?, .wellDown?:
             return "Readiness was down today. Put sleep and food first, and keep any extra hard training light until the next session."

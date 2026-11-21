@@ -22,7 +22,31 @@ public final class PlateTracker {
     /// Always search the prototype's full template box (slower; for checking against the prototype).
     public var alwaysTemplate = false
 
-    public init(minScore: Double = 0.5) { self.minScore = minScore }
+    /// Where the bar's plate is (upright image pixels), when the lifter picked it among several.
+    public var hint: (x: Double, y: Double)?
+    /// The last plate accepted, kept through misses so re-detection stays on the same plate.
+    private var anchor: PlateCircle?
+
+    public init(minScore: Double = 0.5, hint: (x: Double, y: Double)? = nil) {
+        self.minScore = minScore
+        self.hint = hint
+    }
+
+    /// Of every plate in the frame, the bar's: the right size, nearest where it was last seen
+    /// (or where the lifter tapped), otherwise the strongest circle. Plates lying around the gym
+    /// are never taken over the one being followed.
+    private func redetect(_ gray: GrayImage) -> PlateCircle? {
+        var all = PlateDetector.detectAll(gray, maxCount: 4)
+        if let ref = refR { all = all.filter { abs($0.r - ref) <= 0.12 * ref } }
+        guard !all.isEmpty else { return nil }
+        let target = anchor.map { ($0.x, $0.y) } ?? hint.map { ($0.x, $0.y) }
+        guard let (tx, ty) = target else { return all.first }
+        let best = all.min { hypot($0.x - tx, $0.y - ty) < hypot($1.x - tx, $1.y - ty) }!
+        // While following a plate, a circle far off to the side is another plate: wait for ours.
+        // (Up and down is how the bar moves, so allow plenty of vertical distance.)
+        if let a = anchor, abs(best.x - a.x) > 1.0 * a.r { return nil }
+        return best
+    }
 
     /// The latest plate position, for drawing an overlay.
     public var current: PlateCircle? { prev }
@@ -36,10 +60,7 @@ public final class PlateTracker {
         if let p = prev {
             circle = step(gray, prev: p, time: time)
         } else {
-            circle = PlateDetector.detect(gray)
-            if let c = circle, let ref = refR, abs(c.r - ref) > 0.12 * ref {
-                circle = nil  // re-detection found something else (the hub ring, a stray circle)
-            }
+            circle = redetect(gray)
             if let c = circle, refR == nil {
                 refR = c.r
                 template = PlateTemplate(image: gray, cx: c.x, cy: c.y, r: c.r)
@@ -50,6 +71,7 @@ public final class PlateTracker {
             rounds.append(c.roundness)
             misses = 0
             prev = c
+            anchor = c
             beforeLastGood = lastGood
             lastGood = (c, time)
         } else {

@@ -24,7 +24,7 @@ enum VideoTracker {
 
     /// Track the plate in every frame. Uses each frame's own timestamp, because iPhone slow-motion
     /// originals have a variable frame rate (240 fps capture with dropped frames).
-    static func track(_ asset: AVAsset, progress: @escaping @Sendable (Progress) -> Void) async throws -> Track {
+    static func track(_ asset: AVAsset, hint: CGPoint? = nil, progress: @escaping @Sendable (Progress) -> Void) async throws -> Track {
         guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else {
             throw VideoTrackerError.noVideoTrack
         }
@@ -44,7 +44,7 @@ enum VideoTracker {
             throw VideoTrackerError.cannotRead(reader.error?.localizedDescription ?? "unknown error")
         }
 
-        let tracker = PlateTracker()
+        let tracker = PlateTracker(hint: hint.map { (Double($0.x), Double($0.y)) })
         var firstTime: Double? = nil
         var lastReport = -1.0
         while reader.status == .reading {

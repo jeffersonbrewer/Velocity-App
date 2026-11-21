@@ -139,7 +139,11 @@ struct ProgramSessionView: View {
                         if finished == nil { dismiss() }
                     }
                 } message: {
-                    Text("The program moves to the next session, each accessory's next load is set from today's reps and RIR, and you get a debrief of the session.")
+                    if plan.setsDone.isEmpty {
+                        Text("No \(liftName.lowercased()) working sets are recorded yet. If you finish now, the program still moves to the next session and the main lift's loads stay as they are.")
+                    } else {
+                        Text("The program moves to the next session, each accessory's next load is set from today's reps and RIR, and you get a debrief of the session.")
+                    }
                 }
             }
             .padding()

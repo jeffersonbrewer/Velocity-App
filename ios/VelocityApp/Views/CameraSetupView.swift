@@ -90,6 +90,7 @@ struct CameraSetupView: View {
             ZStack {
                 CameraPreview(session: camera.session)
                 plateOverlay
+                if !isRecording && analyzing == nil { plateTapCatcher }
             }
             .aspectRatio(1080.0 / 1920.0, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -129,8 +130,37 @@ struct CameraSetupView: View {
         .padding(.horizontal, 8)
     }
 
+    /// Tap a plate to tell the app which one is on the bar.
+    private var plateTapCatcher: some View {
+        GeometryReader { geo in
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture(coordinateSpace: .local) { p in
+                    guard camera.imageSize.width > 0 else { return }
+                    let s = geo.size.width / camera.imageSize.width
+                    let x = p.x / s, y = p.y / s
+                    if let hit = camera.plates.first(where: { hypot($0.x - x, $0.y - y) <= $0.r * 1.1 }) {
+                        camera.plateHint = CGPoint(x: hit.x, y: hit.y)
+                    }
+                }
+        }
+        .accessibilityHidden(true)
+    }
+
     private var plateOverlay: some View {
         GeometryReader { geo in
+            if camera.imageSize.width > 0 {
+                let s = geo.size.width / camera.imageSize.width
+                // Other plates in view, dashed: tap the right one if the app picked the wrong plate.
+                ForEach(Array(camera.plates.enumerated()), id: \.offset) { _, o in
+                    if camera.plate.map({ hypot($0.x - o.x, $0.y - o.y) > 1 }) ?? true {
+                        Circle()
+                            .stroke(Color.white.opacity(0.6), style: StrokeStyle(lineWidth: 2, dash: [6, 6]))
+                            .frame(width: 2 * o.r * s, height: 2 * o.r * s)
+                            .position(x: o.x * s, y: o.y * s)
+                    }
+                }
+            }
             if let c = camera.plate, camera.imageSize.width > 0 {
                 let s = geo.size.width / camera.imageSize.width
                 Circle()
@@ -147,13 +177,15 @@ struct CameraSetupView: View {
     }
 
     private var plateOK: Bool {
-        guard let c = camera.plate else { return false }
+        guard let c = camera.plate, camera.plates.count <= 1 || camera.plateHint != nil else { return false }
         return c.roundness >= 0.94 && c.r >= 0.08 * camera.imageSize.width
     }
 
     private var plateChip: some View {
         let text: String
-        if let c = camera.plate {
+        if camera.plates.count > 1 && camera.plateHint == nil {
+            text = "Tap the plate on the bar"
+        } else if let c = camera.plate {
             if c.r < 0.08 * camera.imageSize.width { text = "Move closer" }
             else if c.roundness < 0.94 { text = "Face the plate square-on" }
             else { text = "Plate found" }
@@ -468,6 +500,7 @@ struct CameraSetupView: View {
         let settings = SettingsKey.analysisSettings()
         let type = model.nextSetType
         let keep = keepVideos
+        let hint = camera.recordedHint
         camera.stopRecording { url in
             guard let url else { errorText = "Nothing was recorded. Try again."; return }
             camera.stop()  // free the processor for the analysis
@@ -475,7 +508,7 @@ struct CameraSetupView: View {
             Task {
                 do {
                     let analysis = try await Task.detached(priority: .userInitiated) {
-                        let track = try await VideoTracker.track(AVURLAsset(url: url)) { p in
+                        let track = try await VideoTracker.track(AVURLAsset(url: url), hint: hint) { p in
                             Task { @MainActor in analyzing = p }
                         }
                         return try SetAnalyzer.analyze(track: track, input: input, settings: settings)

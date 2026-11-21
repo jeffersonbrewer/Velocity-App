@@ -10,15 +10,21 @@ public enum PlateDetector {
     /// Return the plate: the circle with the strongest center vote, upgraded to the largest
     /// well-covered concentric circle (the plate rim around the hub), or nil.
     public static func detect(_ full: GrayImage, minFrac: Double = 0.05, maxFrac: Double = 0.45) -> PlateCircle? {
+        detectAll(full, minFrac: minFrac, maxFrac: maxFrac, maxCount: 1).first
+    }
+
+    /// Up to maxCount distinct plates, strongest first: every circle in view, so the lifter (or
+    /// the tracker) can tell the bar's plate from plates lying around the gym.
+    public static func detectAll(_ full: GrayImage, minFrac: Double = 0.05, maxFrac: Double = 0.45, maxCount: Int = 4) -> [PlateCircle] {
         // Search at half size for speed; the refinement afterwards restores full precision.
         let img = full.downsampled2x().median5()
         let w = img.width, h = img.height
         let dim = Double(min(w, h))
         let minR = Int(dim * minFrac), maxR = Int(dim * maxFrac)
-        guard maxR > minR, w > 4, h > 4 else { return nil }
+        guard maxR > minR, w > 4, h > 4 else { return [] }
 
         let edges = cannyEdges(img, low: 60, high: 120)
-        guard edges.count >= 20 else { return nil }
+        guard edges.count >= 20 else { return [] }
 
         // Each edge pixel votes for centers along its gradient direction, both ways.
         let dp = 1.5
@@ -57,6 +63,7 @@ public enum PlateDetector {
         // Try the strongest centers in turn; take the first that has a well-covered circle.
         let minDist = dim / 4
         var tried: [(Double, Double)] = []
+        var found: [PlateCircle] = []
         for c in centers.prefix(20) {
             let cx = (Double(c.x) + 0.5) * dp, cy = (Double(c.y) + 0.5) * dp
             if tried.contains(where: { hypot($0.0 - cx, $0.1 - cy) < minDist }) { continue }
@@ -70,11 +77,13 @@ public enum PlateDetector {
                 if debug { print("  r", gr, "->", c.x, c.y, c.r, "support", c.support) }
                 if abs(c.r - gr) < 0.15 * gr, hypot(c.x - gx, c.y - gy) < 0.2 * gr,
                    c.support >= CircleFit.nRays / 2 {
-                    return c
+                    found.append(c)
+                    break
                 }
             }
+            if found.count >= maxCount { break }
         }
-        return nil
+        return found
     }
 
     struct Edge { var x: Double; var y: Double; var dx: Double; var dy: Double }

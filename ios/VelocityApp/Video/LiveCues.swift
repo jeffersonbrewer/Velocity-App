@@ -44,12 +44,15 @@ final class LiveCuePlayer {
     private func play(_ tones: [(Double, Double)]) {
         guard started else { return }
         let sr = format.sampleRate
-        let frames = AVAudioFrameCount(tones.reduce(0) { $0 + $1.1 } * sr)
+        // Count frames per tone exactly as they're written below: summing the seconds first can
+        // round down by one frame, and the loop would then write past the end of the buffer.
+        let counts = tones.map { Int($0.1 * sr) }
+        let frames = AVAudioFrameCount(counts.reduce(0, +))
         guard let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames), let ch = buf.floatChannelData?[0] else { return }
         var i = 0
-        for (f, d) in tones {
-            let n = Int(d * sr)
-            for k in 0..<n {
+        for (j, (f, _)) in tones.enumerated() {
+            let n = counts[j]
+            for k in 0..<n where i < Int(frames) {
                 let env = min(1, Double(k) / 200, Double(n - k) / 200)   // short fade in/out, no clicks
                 ch[i] = f > 0 ? Float(0.6 * env * sin(2 * .pi * f * Double(k) / sr)) : 0
                 i += 1
