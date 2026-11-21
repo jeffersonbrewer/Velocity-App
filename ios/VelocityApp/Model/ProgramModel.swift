@@ -13,6 +13,11 @@ struct SessionPlan {
     var prescription: MainLiftPrescription
     /// Working sets of the main lift done today, oldest first (the readiness set left out).
     var setsDone: [AnalyzedSet]
+    /// Sets of the main lift logged by hand today (no velocity), oldest first.
+    var manualDone: [ManualSet]
+    /// Main-lift sets done today, filmed or by hand.
+    var setCount: Int { setsDone.count + manualDone.count }
+    var repCount: Int { setsDone.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +) + manualDone.map(\.reps).reduce(0, +) }
     var nextLoadKg: Double
     var nextLoadReason: String?
     var doneReason: String?
@@ -104,10 +109,17 @@ extension AppModel {
             let r = Prescriber.nextLoad(after: last.analysis.input.loadKg, firstRepMV: first, prescription: p, stepKg: u.toKg(u.step))
             next = round(r.loadKg); reason = r.reason
         }
-        let reps = done.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +)
+        let manual = manualSets.filter { $0.exerciseID == day.mainExerciseID && Calendar.current.isDateInToday($0.date) }
+            .sorted { $0.date < $1.date }
+        // A set logged by hand after the last filmed one: keep its load (there's no velocity to adjust from).
+        if let m = manual.last, m.date > (done.last?.date ?? .distantPast) {
+            next = m.loadKg; reason = nil
+        }
+        let reps = done.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +) + manual.map(\.reps).reduce(0, +)
         return SessionPlan(day: day, week: week, oneRmKg: orm, readinessLoadKg: target60, readinessSet: rSet, readiness: reading,
-                           readinessDelta: delta, prescription: p, setsDone: Array(done), nextLoadKg: next, nextLoadReason: reason,
-                           doneReason: Prescriber.liftDone(setsDone: done.count, repsDone: reps, prescription: p),
+                           readinessDelta: delta, prescription: p, setsDone: Array(done), manualDone: manual,
+                           nextLoadKg: next, nextLoadReason: reason,
+                           doneReason: Prescriber.liftDone(setsDone: done.count + manual.count, repsDone: reps, prescription: p),
                            lineLearned: vl?.learned ?? false)
     }
 

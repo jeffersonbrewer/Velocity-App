@@ -1,6 +1,31 @@
 import Foundation
 import VelocityCore
 
+/// A main-lift set logged by hand when the camera couldn't track it: load, reps and RIR, no velocity.
+struct ManualSet: Codable, Hashable, Identifiable {
+    var id = UUID()
+    var date: Date
+    var exerciseID: String
+    var loadKg: Double
+    var reps: Int
+    var rir: Int?
+}
+
+enum ManualSetStore {
+    static var url: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("manual-sets.json")
+    }
+    static func load() -> [ManualSet] {
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([ManualSet].self, from: data)) ?? []
+    }
+    static func save(_ s: [ManualSet]) {
+        guard let data = try? JSONEncoder().encode(s) else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: url, options: .atomic)
+    }
+}
+
 /// What a finished program session looked like, saved when the lifter taps Finish session.
 struct SessionDebrief: Codable, Hashable, Identifiable {
     var id = UUID()
@@ -44,6 +69,13 @@ struct SessionDebrief: Codable, Hashable, Identifiable {
     var event: String?
     /// Each accessory: what was done today and the load set for next time. (Nil in debriefs saved before v0.17.)
     var accessories: [AccessoryChange]?
+    /// Main-lift sets logged by hand (nil in debriefs saved before they existed).
+    var manualSets: [ManualSet]?
+
+    var manual: [ManualSet] { manualSets ?? [] }
+    /// Sets of the main lift done in all, filmed or by hand.
+    var mainSetCount: Int { setIDs.count + manual.count }
+    var totalReps: Int { reps + manual.map(\.reps).reduce(0, +) }
 
     var liftName: String { ExerciseCatalog.exercise(id: exerciseID)?.name ?? exerciseID }
     var bestMVChange: Double? { bestMV.flatMap { b in compareMV.map { b - $0 } } }
@@ -71,7 +103,6 @@ extension AppModel {
         let u = unit
         let metrics = plan.setsDone.compactMap(\.analysis.setMetrics)
         let top = plan.setsDone.map(\.analysis.input.loadKg).max()
-        let steps = top.map { Int((u.fromKg($0 - p.plannedLoadKg) / u.step).rounded()) } ?? 0
         let best = plan.setsDone.max { ($0.analysis.setMetrics?.bestMeanVelocity ?? 0) < ($1.analysis.setMetrics?.bestMeanVelocity ?? 0) }
         let bestMV = best?.analysis.setMetrics?.bestMeanVelocity
         let bestLoad = best?.analysis.input.loadKg
@@ -92,18 +123,22 @@ extension AppModel {
         }
 
         let losses = metrics.filter { $0.repCount >= 2 }.map(\.velocityLossPct)
+        let manualTop = plan.manualDone.map(\.loadKg).max()
+        let allTop = [top, manualTop].compactMap { $0 }.max()
+        let allSteps = allTop.map { Int((u.fromKg($0 - p.plannedLoadKg) / u.step).rounded()) } ?? 0
         return SessionDebrief(
             date: Date(), dayName: plan.day.name, exerciseID: plan.day.mainExerciseID, goal: plan.day.goal,
             week: program?.progress.week ?? 1, weeks: program?.weeks ?? 6, deload: plan.week.isDeload,
             readiness: plan.readiness, readinessDelta: plan.readinessDelta,
             readinessLoadKg: plan.readinessSet?.analysis.input.loadKg,
-            plannedLoadKg: p.plannedLoadKg, startLoadKg: p.loadKg, topLoadKg: top, loadSteps: steps,
+            plannedLoadKg: p.plannedLoadKg, startLoadKg: p.loadKg, topLoadKg: allTop, loadSteps: allSteps,
             setIDs: plan.setsDone.map(\.id), setsPlanned: p.sets, reps: metrics.map(\.repCount).reduce(0, +),
             repCap: p.sessionRepCap, repsPerSet: metrics.map(\.repCount),
             bestMV: bestMV, bestMVLoadKg: bestLoad, compareMV: compareMV, compareDate: compareDate,
             avgLossPct: losses.isEmpty ? nil : losses.reduce(0, +) / Double(losses.count), lossCutoffPct: p.lossCutoffPct,
             oneRmKg: plan.oneRmKg, drift: profileDrift(plan.day.mainExerciseID),
-            accessoriesLogged: accessoryLog.values.filter { sets in sets.contains { $0.reps > 0 } }.count)
+            accessoriesLogged: accessoryLog.values.filter { sets in sets.contains { $0.reps > 0 } }.count,
+            manualSets: plan.manualDone)
     }
 
     /// Fill in the next session once the block has moved on.
@@ -148,14 +183,15 @@ struct AccessoryChange: Codable, Hashable {
 /// The plain-words parts of a debrief.
 enum DebriefText {
     static func verdict(_ d: SessionDebrief) -> String {
-        if d.setIDs.isEmpty { return "Main lift not recorded today" }
+        if d.mainSetCount == 0 { return "Main lift not recorded today" }
+        if d.setIDs.isEmpty { return "Main lift logged by hand" }
         if d.deload { return "Deload session done" }
         switch d.readiness {
         case .wellDown?, .down?: return "Tough day, and you adjusted well"
         case .slightlyDown?: return "A bit flat, work still done"
         case .veryGood?, .good?: return d.loadSteps > 0 ? "Strong session, load went up" : "Strong session, moving well"
         default:
-            if d.setIDs.count < d.setsPlanned && d.reps < d.repCap { return "Shorter session than planned" }
+            if d.mainSetCount < d.setsPlanned && d.totalReps < d.repCap { return "Shorter session than planned" }
             return d.loadSteps > 0 ? "Solid session, load went up" : "Solid session, right on plan"
         }
     }
@@ -180,13 +216,23 @@ enum DebriefText {
         } else {
             s.append("No readiness reading today, so the session ran at the planned load.")
         }
+        let m = d.manual
+        if !m.isEmpty {
+            let loads = Set(m.map { u.format(kg: $0.loadKg) })
+            let at = loads.count == 1 ? " at \(loads.first!) \(u.rawValue)" : ""
+            s.append("\(m.count) set\(m.count == 1 ? "" : "s")\(at) logged by hand, \(m.map(\.reps).reduce(0, +)) reps. They count toward the plan, but carry no velocity, so readiness, loss and your 1RM are judged only from filmed sets.")
+        }
         if d.setIDs.isEmpty {
-            s.append("No working sets were recorded for \(d.liftName.lowercased()).")
+            if m.isEmpty { s.append("No working sets were recorded for \(d.liftName.lowercased()).") }
         } else {
             let lo = d.repsPerSet.min() ?? 0, hi = d.repsPerSet.max() ?? 0
             let reps = lo == hi ? "\(lo) reps each" : "\(lo) to \(hi) reps"
             let load = d.topLoadKg.map { " up to \(u.format(kg: $0)) \(u.rawValue)" } ?? ""
-            s.append("You did \(d.setIDs.count) of \(d.setsPlanned) working sets\(load), \(reps), \(d.reps) reps in all.")
+            if d.manual.isEmpty {
+                s.append("You did \(d.setIDs.count) of \(d.setsPlanned) working sets\(load), \(reps), \(d.reps) reps in all.")
+            } else {
+                s.append("You filmed \(d.setIDs.count) set\(d.setIDs.count == 1 ? "" : "s")\(load), \(reps).")
+            }
             if let loss = d.avgLossPct {
                 let near = loss >= d.lossCutoffPct - 3
                 s.append(String(format: "Sets averaged %.0f%% velocity loss against a %.0f%% cutoff%@.", loss, d.lossCutoffPct,
@@ -198,6 +244,9 @@ enum DebriefText {
     }
 
     static func whatItMeans(_ d: SessionDebrief, unit u: WeightUnit) -> String {
+        if d.setIDs.isEmpty && !d.manual.isEmpty {
+            return "Sets logged by hand have no velocity, so your 1RM (\(u.format(kg: d.oneRmKg)) \(u.rawValue)) and the velocity targets stay as they were. The block has moved on to the next session."
+        }
         if d.setIDs.isEmpty {
             return "With no \(d.liftName.lowercased()) sets recorded there's nothing to judge today, so your 1RM (\(u.format(kg: d.oneRmKg)) \(u.rawValue)) and next loads stay as they were. The block has moved on to the next session."
         }
@@ -271,7 +320,7 @@ enum DebriefText {
     }
 
     static func recovery(_ d: SessionDebrief) -> String {
-        if d.setIDs.isEmpty { return "Usual sleep and protein." }
+        if d.mainSetCount == 0 { return "Usual sleep and protein." }
         switch d.readiness {
         case .down?, .wellDown?:
             return "Readiness was down today. Put sleep and food first, and keep any extra hard training light until the next session."

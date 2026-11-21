@@ -71,6 +71,8 @@ final class AppModel {
     var program: Program? = ProgramStore.load() { didSet { ProgramStore.save(program) } }
     /// Debriefs of finished program sessions, newest first.
     var debriefs: [SessionDebrief] = DebriefStore.load() { didSet { DebriefStore.save(debriefs) } }
+    /// Main-lift sets logged by hand (no video), for when the camera can't track.
+    var manualSets: [ManualSet] = ManualSetStore.load() { didSet { ManualSetStore.save(manualSets) } }
 
     private let store: SetStore
 

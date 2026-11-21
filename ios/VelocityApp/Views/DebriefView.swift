@@ -54,7 +54,7 @@ struct DebriefView: View {
                     Text(DebriefText.verdict(d)).font(.title2.weight(.bold))
                     HStack(spacing: 8) {
                         if let r = d.readiness { Pill(text: "Readiness: \(r.rawValue)", color: readinessColor(r)) }
-                        if !d.setIDs.isEmpty { Pill(text: DebriefText.loadLabel(d), color: Theme.accent) }
+                        if d.mainSetCount > 0 { Pill(text: DebriefText.loadLabel(d), color: Theme.accent) }
                         if d.deload { Pill(text: "Deload", color: Theme.warn) }
                     }
                 }
@@ -80,7 +80,7 @@ struct DebriefView: View {
                          d.bestMVChange.map { c in String(format: "%+.2f vs %@", c, d.compareDate?.formatted(.dateTime.month(.abbreviated).day()) ?? "") }
                             ?? d.bestMVLoadKg.map { "at \(unit.format(kg: $0)) \(unit.rawValue)" } ?? "")
                     tile("Avg loss", Fmt.percent(d.avgLossPct), "cutoff \(Fmt.percent(d.lossCutoffPct))")
-                    tile("Reps", "\(d.reps) / \(d.repCap)", "session cap")
+                    tile("Reps", "\(d.totalReps) / \(d.repCap)", d.manual.isEmpty ? "session cap" : "session cap, incl. by hand")
                 }
 
                 Card {

@@ -11,6 +11,7 @@ struct ProgramSessionView: View {
     @State private var accessoryLoad: [UUID: Double] = [:]
     @State private var confirmFinish = false
     @State private var finished: UUID?
+    @State private var logging: ManualSetDraft?
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
 
@@ -30,6 +31,12 @@ struct ProgramSessionView: View {
         .navigationTitle(finished == nil ? "Today's session" : "Session debrief")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
+        .sheet(item: $logging) { draft in
+            ManualSetSheet(draft: draft, unit: unit) { d in
+                guard let plan = model.sessionPlan() else { return }
+                model.manualSets.append(ManualSet(date: Date(), exerciseID: plan.day.mainExerciseID, loadKg: d.loadKg, reps: d.reps, rir: d.rir))
+            }
+        }
     }
 
     private func content(_ plan: SessionPlan) -> some View {
@@ -69,7 +76,7 @@ struct ProgramSessionView: View {
                 // 2. Main lift
                 Card {
                     HStack {
-                        CardLabel(text: "\(liftName) · set \(min(plan.setsDone.count + 1, p.sets)) of \(p.sets)")
+                        CardLabel(text: "\(liftName) · set \(min(plan.setCount + 1, p.sets)) of \(p.sets)")
                         Spacer()
                         Text("Week \(model.program?.progress.week ?? 1)").font(.caption).foregroundStyle(Theme.muted)
                     }
@@ -89,15 +96,21 @@ struct ProgramSessionView: View {
                         }
                         row("Stop the set at", "\(Fmt.percent(p.lossCutoffPct)) loss or \(p.repCapPerSet) reps")
                         row("Rest", "\(Fmt.load(p.restLowMin))–\(Fmt.load(p.restHighMin)) min")
-                        row("Session rep cap", "\(plan.setsDone.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +)) of \(p.sessionRepCap)")
+                        row("Session rep cap", "\(plan.repCount) of \(p.sessionRepCap)")
                         Button {
                             model.prepareMainSet(plan, loadKg: plan.nextLoadKg)
                             showCamera = true
                         } label: {
-                            Label("Record set \(plan.setsDone.count + 1)", systemImage: "video.fill").frame(maxWidth: .infinity)
+                            Label("Record set \(plan.setCount + 1)", systemImage: "video.fill").frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
+                        Button { logging = ManualSetDraft(loadKg: plan.nextLoadKg) } label: {
+                            Label("Log a set by hand", systemImage: "square.and.pencil").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        Text("If the camera can't track the plate, log the set's load, reps and RIR here. It counts toward today's sets, but has no velocity.")
+                            .font(.caption).foregroundStyle(Theme.muted)
                     }
                     if plan.lineLearned && p.zoneLow != nil {
                         Text("Velocity targets are learned from your recent sessions. They never change your 1RM, but if your sets drift 5% or more from it, the app suggests a profile test.")
@@ -108,6 +121,21 @@ struct ProgramSessionView: View {
                 }
                 ForEach(plan.setsDone) { set in
                     NavigationLink(value: set.id) { SetRow(set: set, unit: unit, showDate: false) }.buttonStyle(.plain)
+                }
+                ForEach(plan.manualDone) { m in
+                    Card {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(unit.format(kg: m.loadKg)) \(unit.rawValue) × \(m.reps)").font(.headline).monospacedDigit()
+                                Text("Logged by hand\(m.rir.map { " · RIR \($0)" } ?? "") · no velocity").font(.caption).foregroundStyle(Theme.muted)
+                            }
+                            Spacer()
+                            Button(role: .destructive) { model.manualSets.removeAll { $0.id == m.id } } label: {
+                                Image(systemName: "trash")
+                            }
+                            .accessibilityLabel("Delete set logged by hand")
+                        }
+                    }
                 }
 
                 // 3. Accessories
@@ -139,7 +167,7 @@ struct ProgramSessionView: View {
                         if finished == nil { dismiss() }
                     }
                 } message: {
-                    if plan.setsDone.isEmpty {
+                    if plan.setCount == 0 {
                         Text("No \(liftName.lowercased()) working sets are recorded yet. If you finish now, the program still moves to the next session and the main lift's loads stay as they are.")
                     } else {
                         Text("The program moves to the next session, each accessory's next load is set from today's reps and RIR, and you get a debrief of the session.")
@@ -213,5 +241,46 @@ struct AccessorySessionRow: View {
 
     private func rirBinding(_ i: Int) -> Binding<Int> {
         Binding(get: { entry(i).rir ?? accessory.rir }, set: { v in update(i) { $0.rir = v } })
+    }
+}
+
+struct ManualSetDraft: Identifiable {
+    let id = UUID()
+    var loadKg: Double
+    var reps = 5
+    var rir = 2
+}
+
+/// Log one main-lift set by hand: load, reps and reps in reserve.
+struct ManualSetSheet: View {
+    @State var draft: ManualSetDraft
+    let unit: WeightUnit
+    let onSave: (ManualSetDraft) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    LoadField(loadKg: $draft.loadKg, unit: unit)
+                    Stepper("\(draft.reps) reps", value: $draft.reps, in: 1...50).monospacedDigit()
+                    Picker("Reps in reserve", selection: $draft.rir) {
+                        ForEach(0...5, id: \.self) { Text("RIR \($0)").tag($0) }
+                    }
+                } footer: {
+                    Text("Counts toward today's sets and rep cap. Sets logged by hand have no velocity, so they don't change readiness, loads between sets or your 1RM.")
+                }
+            }
+            .navigationTitle("Log a set by hand")
+            .navigationBarTitleDisplayMode(.inline)
+            .keyboardDoneButton()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { onSave(draft); dismiss() }.fontWeight(.semibold).disabled(draft.loadKg <= 0)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
