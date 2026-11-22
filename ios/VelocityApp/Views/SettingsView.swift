@@ -70,6 +70,8 @@ struct SettingsView: View {
                     Text("Bumper and competition plates are 45 cm across. The 8 Hz filter is the setting validated against GymAware; it stays adjustable while peak velocity is being checked. Changes apply to sets analyzed after the change.")
                 }
 
+                BackupSection()
+
                 Section {
                     HStack {
                         Text("Version")

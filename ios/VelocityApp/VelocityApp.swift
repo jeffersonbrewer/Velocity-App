@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct VelocityApp: App {
     @State private var model = AppModel()
+    @Environment(\.scenePhase) private var phase
 
     var body: some Scene {
         WindowGroup {
@@ -10,6 +11,9 @@ struct VelocityApp: App {
                 .environment(model)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
+        }
+        .onChange(of: phase) { _, p in
+            if p == .background { model.autoBackup() }
         }
     }
 }

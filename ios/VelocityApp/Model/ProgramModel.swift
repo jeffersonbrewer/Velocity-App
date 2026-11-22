@@ -194,6 +194,7 @@ extension AppModel {
         addNext(to: &debrief)
         debriefs.insert(debrief, at: 0)
         Task { await syncCalendar(only: nil) }
+        Task { @MainActor in _ = try? await self.backUp() }
         return debrief
     }
 

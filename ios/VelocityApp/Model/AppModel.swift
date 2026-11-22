@@ -76,7 +76,7 @@ final class AppModel {
     /// Main-lift sets logged by hand (no video), for when the camera can't track.
     var manualSets: [ManualSet] = ManualSetStore.load() { didSet { ManualSetStore.save(manualSets) } }
 
-    private let store: SetStore
+    let store: SetStore
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
