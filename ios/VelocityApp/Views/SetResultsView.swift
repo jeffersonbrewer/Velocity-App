@@ -24,7 +24,6 @@ struct SetResultsView: View {
         }
     }
 
-    @ViewBuilder
     /// Reps the camera missed (plate hidden, recording stopped early): added by hand, reps only.
     private func missedRepsCard(_ set: AnalyzedSet) -> some View {
         let n = model.addedReps(to: set.id)
@@ -39,6 +38,7 @@ struct SetResultsView: View {
         }
     }
 
+    @ViewBuilder
     private func content(_ set: AnalyzedSet) -> some View {
         let a = set.analysis
         let m = a.setMetrics
