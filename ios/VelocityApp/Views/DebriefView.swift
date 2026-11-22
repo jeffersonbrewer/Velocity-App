@@ -49,7 +49,7 @@ struct DebriefView: View {
             VStack(alignment: .leading, spacing: 12) {
                 // Verdict
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(d.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))) · \(d.dayName) · \(d.liftName) · Week \(d.week) of \(d.weeks)")
+                    Text("\(d.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))) · \(d.dayName) · \(([d] + (d.otherLifts ?? [])).map(\.liftName).joined(separator: " + ")) · Week \(d.week) of \(d.weeks)")
                         .font(.footnote).foregroundStyle(Theme.muted)
                     Text(DebriefText.verdict(d)).font(.title2.weight(.bold))
                     HStack(spacing: 8) {
@@ -70,8 +70,26 @@ struct DebriefView: View {
                     Text(DebriefText.whatItMeans(d, unit: unit)).font(.subheadline)
                 }
 
+                ForEach(d.otherLifts ?? []) { o in
+                    Card {
+                        HStack(alignment: .firstTextBaseline) {
+                            CardLabel(text: "\(o.liftName) · \(o.goal.rawValue)")
+                            Spacer()
+                            if o.mainSetCount > 0 { Pill(text: DebriefText.loadLabel(o), color: Theme.accent) }
+                        }
+                        Text(DebriefText.verdict(o)).font(.headline)
+                        Text(DebriefText.howItWent(o, unit: unit)).font(.subheadline)
+                        HStack {
+                            Text("Best rep \(o.bestMV.map { "\(Fmt.velocity($0)) m/s" } ?? "–")")
+                            Spacer()
+                            Text("Reps \(o.totalReps) / \(o.repCap)")
+                        }
+                        .font(.caption.monospacedDigit()).foregroundStyle(Theme.muted)
+                    }
+                }
+
                 // The numbers
-                CardLabel(text: "The numbers").padding(.top, 6)
+                CardLabel(text: "The numbers\(d.otherLifts == nil ? "" : " · \(d.liftName)")").padding(.top, 6)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                     tile("Readiness", d.readiness?.rawValue ?? "–",
                          d.readinessDelta.map { String(format: "%+.2f m/s vs profile", $0) } ?? (d.readinessLoadKg != nil ? "starts next session" : "no check today"),
@@ -120,14 +138,15 @@ struct DebriefView: View {
                     Text(DebriefText.blockNote(d)).font(.caption).foregroundStyle(Theme.muted)
                 }
 
-                if !d.setIDs.isEmpty {
+                let allSetIDs = d.setIDs + (d.otherLifts ?? []).flatMap(\.setIDs)
+                if !allSetIDs.isEmpty {
                     Button { withAnimation { showSets.toggle() } } label: {
                         Label(showSets ? "Hide sets" : "See set by set", systemImage: showSets ? "chevron.up" : "list.bullet")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     if showSets {
-                        ForEach(d.setIDs.compactMap { model.set($0) }) { set in
+                        ForEach(allSetIDs.compactMap { model.set($0) }) { set in
                             NavigationLink(value: set.id) { SetRow(set: set, unit: unit, showDate: false) }.buttonStyle(.plain)
                         }
                     }
@@ -190,6 +209,9 @@ struct DebriefView: View {
                 row(ExerciseCatalog.exercise(id: ex)?.name ?? ex, d.nextGoal?.rawValue ?? "")
                 if let l = d.nextLoadKg { row("Expected load", "\(unit.format(kg: l)) \(unit.rawValue)") }
                 if let lo = d.nextZoneLow, let hi = d.nextZoneHigh { row("Target, first rep", "\(Fmt.velocity(lo))–\(Fmt.velocity(hi)) m/s") }
+                ForEach(d.nextExtraExerciseIDs ?? [], id: \.self) { id in
+                    row("Then", ExerciseCatalog.exercise(id: id)?.name ?? id)
+                }
                 if d.nextDeload == true {
                     Text("It's a deload session: lighter, fewer sets.").font(.caption).foregroundStyle(Theme.muted)
                 }

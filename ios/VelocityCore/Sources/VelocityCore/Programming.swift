@@ -41,6 +41,18 @@ public struct GoalTemplate: Codable, Hashable, Sendable {
     public var accessorySets: Int
     public var accessoryRepLow: Int, accessoryRepHigh: Int
 
+    /// The goal's template for one lift. Olympic lifts train power at 70–85% of their own 1RM,
+    /// with at most 3 reps a set.
+    public static func forLift(_ g: TrainingGoal, exerciseID: String) -> GoalTemplate {
+        var t = Self.default(g)
+        guard ExerciseCatalog.olympic.contains(exerciseID) else { return t }
+        if g == .power { t.pctLow = 0.70; t.pctHigh = 0.85 }
+        t.repCapPerSet = min(t.repCapPerSet, 3)
+        t.sessionRepCapLow = min(t.sessionRepCapLow, 10)
+        t.sessionRepCapHigh = min(t.sessionRepCapHigh, 18)
+        return t
+    }
+
     public static func `default`(_ g: TrainingGoal) -> GoalTemplate {
         switch g {
         case .maxStrength:

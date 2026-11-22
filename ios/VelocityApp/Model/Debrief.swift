@@ -75,6 +75,10 @@ struct SessionDebrief: Codable, Hashable, Identifiable {
     var manualSets: [ManualSet]?
     /// Reps the camera missed, added by hand to filmed sets.
     var addedReps: Int?
+    /// The day's later main lifts, each with its own summary (accessories and next session stay on the first).
+    var otherLifts: [SessionDebrief]?
+    /// Main lifts after the first on the next session.
+    var nextExtraExerciseIDs: [String]?
 
     var manual: [ManualSet] { manualSets ?? [] }
     /// Sets of the main lift done in all, filmed or by hand.
@@ -116,7 +120,7 @@ extension AppModel {
         if let bestLoad {
             let cutoff = Calendar.current.date(byAdding: .day, value: -5, to: Date())!
             let earlier = sets.filter { s in
-                s.exerciseID == plan.day.mainExerciseID && s.date < cutoff && s.setType == .working
+                s.exerciseID == plan.lift.exerciseID && s.date < cutoff && s.setType == .working
                     && abs(s.analysis.input.loadKg - bestLoad) <= 0.025 * bestLoad && (s.analysis.setMetrics?.repCount ?? 0) > 0
             }
             if let day = earlier.first.map({ Calendar.current.startOfDay(for: $0.date) }) {
@@ -131,7 +135,7 @@ extension AppModel {
         let allTop = [top, manualTop].compactMap { $0 }.max()
         let allSteps = allTop.map { Int((u.fromKg($0 - p.plannedLoadKg) / u.step).rounded()) } ?? 0
         return SessionDebrief(
-            date: Date(), dayName: plan.day.name, exerciseID: plan.day.mainExerciseID, goal: plan.day.goal,
+            date: Date(), dayName: plan.day.name, exerciseID: plan.lift.exerciseID, goal: plan.lift.goal,
             week: program?.progress.week ?? 1, weeks: program?.weeks ?? 6, deload: plan.week.isDeload,
             readiness: plan.readiness, readinessDelta: plan.readinessDelta,
             readinessLoadKg: plan.readinessSet?.analysis.input.loadKg,
@@ -140,7 +144,7 @@ extension AppModel {
             repCap: p.sessionRepCap, repsPerSet: metrics.map(\.repCount),
             bestMV: bestMV, bestMVLoadKg: bestLoad, compareMV: compareMV, compareDate: compareDate,
             avgLossPct: losses.isEmpty ? nil : losses.reduce(0, +) / Double(losses.count), lossCutoffPct: p.lossCutoffPct,
-            oneRmKg: plan.oneRmKg, drift: profileDrift(plan.day.mainExerciseID),
+            oneRmKg: plan.oneRmKg, drift: profileDrift(plan.lift.exerciseID),
             accessoriesLogged: accessoryLog.values.filter { sets in sets.contains { $0.reps > 0 } }.count,
             manualSets: plan.manualDone, addedReps: plan.addedReps)
     }
@@ -153,6 +157,7 @@ extension AppModel {
         d.nextDayName = day.name
         d.nextExerciseID = day.mainExerciseID
         d.nextGoal = day.goal
+        d.nextExtraExerciseIDs = day.extras.isEmpty ? nil : day.extras.map(\.exerciseID)
         d.nextLoadKg = p.loadKg
         d.nextZoneLow = p.zoneLow
         d.nextZoneHigh = p.zoneHigh
@@ -163,7 +168,7 @@ extension AppModel {
 
     /// Estimated 1RMs this lift was trained from, oldest first, for the trend line.
     func oneRmTrend(_ exerciseID: String) -> [(date: Date, kg: Double)] {
-        debriefs.filter { $0.exerciseID == exerciseID }.reversed().map { (date: $0.date, kg: $0.oneRmKg) }
+        debriefs.flatMap { [$0] + ($0.otherLifts ?? []) }.filter { $0.exerciseID == exerciseID }.reversed().map { (date: $0.date, kg: $0.oneRmKg) }
     }
 }
 

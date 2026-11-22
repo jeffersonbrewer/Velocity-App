@@ -15,6 +15,7 @@ public struct Exercise: Codable, Hashable, Identifiable, Sendable {
 
     /// Olympic lifts have no dependable 1RM velocity, so no 1RM is estimated for them.
     public var allowsOneRm: Bool { !ExerciseCatalog.noOneRm.contains(id) }
+    public var isOlympic: Bool { ExerciseCatalog.olympic.contains(id) }
 
     public init(id: String, name: String, concentricFirst: Bool, bodyMassFraction: Double,
                 defaultMvt: Double? = nil, mvtSource: String? = nil, mvtChecked: Bool = false) {
@@ -51,12 +52,18 @@ public enum ExerciseCatalog {
                  defaultMvt: 0.48, mvtSource: "Garcia-Ramos et al. 2019 (0.479 ± 0.032 m/s)", mvtChecked: true),
         Exercise(id: "pendlay_row", name: "Pendlay row", concentricFirst: true, bodyMassFraction: 0),
         Exercise(id: "power_clean", name: "Power clean", concentricFirst: true, bodyMassFraction: 0),
+        Exercise(id: "hang_clean", name: "Hang clean", concentricFirst: true, bodyMassFraction: 0),
+        Exercise(id: "hang_power_clean", name: "Hang power clean", concentricFirst: true, bodyMassFraction: 0),
+        Exercise(id: "push_jerk", name: "Push jerk", concentricFirst: false, bodyMassFraction: 0),
+        Exercise(id: "split_jerk", name: "Split jerk", concentricFirst: false, bodyMassFraction: 0),
         Exercise(id: "pull_up", name: "Pull-up (weighted)", concentricFirst: false, bodyMassFraction: 1.0,
                  defaultMvt: 0.20, mvtSource: "Sanchez-Moreno et al. 2017 (0.20 ± 0.05 m/s)", mvtChecked: true),
         Exercise(id: "dip", name: "Dip (weighted)", concentricFirst: false, bodyMassFraction: 1.0),
     ]
 
-    static let noOneRm: Set<String> = ["power_clean"]
+    static let noOneRm: Set<String> = olympic
+    /// Olympic lifts and their variations: loaded from a typed 1RM, with their own power range and low reps.
+    public static let olympic: Set<String> = ["power_clean", "hang_clean", "hang_power_clean", "push_jerk", "split_jerk"]
 
     public static func exercise(id: String) -> Exercise? { all.first { $0.id == id } }
 }

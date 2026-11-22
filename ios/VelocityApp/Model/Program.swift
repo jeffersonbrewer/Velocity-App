@@ -8,6 +8,26 @@ struct ProgramDay: Codable, Hashable, Identifiable {
     var mainExerciseID: String
     var goal: TrainingGoal
     var accessories: [AccessoryPlan] = []
+    /// Main lifts after the first, each with its own goal, done in order. (Optional so older program files load.)
+    var extraLifts: [MainLift]?
+
+    var extras: [MainLift] {
+        get { extraLifts ?? [] }
+        set { extraLifts = newValue.isEmpty ? nil : newValue }
+    }
+    /// Every main lift of the day in order; the first is `mainExerciseID` and `goal`.
+    var lifts: [MainLift] { [MainLift(id: id, exerciseID: mainExerciseID, goal: goal)] + extras }
+    var liftNames: String { lifts.map { ExerciseCatalog.exercise(id: $0.exerciseID)?.name ?? $0.exerciseID }.joined(separator: " + ") }
+}
+
+/// One main lift in a day, with its goal.
+struct MainLift: Codable, Hashable, Identifiable {
+    var id = UUID()
+    var exerciseID: String
+    var goal: TrainingGoal
+
+    var name: String { ExerciseCatalog.exercise(id: exerciseID)?.name ?? exerciseID }
+    var template: GoalTemplate { .forLift(goal, exerciseID: exerciseID) }
 }
 
 /// A finished session, kept for the program's history.
@@ -40,14 +60,16 @@ struct Program: Codable, Hashable {
 
     var currentDay: ProgramDay? { progress.finished || days.isEmpty ? nil : days[min(progress.day, days.count - 1)] }
 
-    func weekPlans(for day: ProgramDay) -> [WeekPlan] {
-        BlockPlanner.weeks(for: .default(day.goal), count: weeks)
+    func weekPlans(for day: ProgramDay) -> [WeekPlan] { weekPlans(for: day.lifts[0]) }
+
+    func weekPlans(for lift: MainLift) -> [WeekPlan] {
+        BlockPlanner.weeks(for: lift.template, count: weeks)
     }
 
-    /// This session's week plan: the block week, or deload values during a responsive deload.
-    func weekPlan(for day: ProgramDay) -> WeekPlan {
-        if progress.inResponsiveDeload { return BlockPlanner.deload(for: .default(day.goal)) }
-        let plans = weekPlans(for: day)
+    /// This session's week plan for a lift: the block week, or deload values during a responsive deload.
+    func weekPlan(for lift: MainLift) -> WeekPlan {
+        if progress.inResponsiveDeload { return BlockPlanner.deload(for: lift.template) }
+        let plans = weekPlans(for: lift)
         return plans[min(max(progress.week - 1, 0), plans.count - 1)]
     }
 
@@ -98,7 +120,7 @@ enum AccessoryLibrary {
 
     /// Patterns a day trains: its main lift and its accessories.
     static func patterns(of day: ProgramDay) -> [MovementPattern] {
-        [AccessoryLibraryData.pattern(ofMainLift: day.mainExerciseID)] + day.accessories.flatMap { $0.exercise?.patterns ?? [] }
+        day.lifts.map { AccessoryLibraryData.pattern(ofMainLift: $0.exerciseID) } + day.accessories.flatMap { $0.exercise?.patterns ?? [] }
     }
 
     /// Fill a day's slots, complementing the rest of the week.

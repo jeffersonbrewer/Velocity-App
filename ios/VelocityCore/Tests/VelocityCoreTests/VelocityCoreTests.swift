@@ -460,3 +460,13 @@ final class LiveRepTests: XCTestCase {
         XCTAssertFalse(early.settled)
     }
 }
+
+final class OlympicTemplateTests: XCTestCase {
+    func testOlympicPowerUsesHeavierRangeAndLowReps() {
+        let t = GoalTemplate.forLift(.power, exerciseID: "hang_clean")
+        XCTAssertEqual(t.pctLow, 0.70); XCTAssertEqual(t.pctHigh, 0.85)
+        XCTAssertEqual(t.repCapPerSet, 3)
+        XCTAssertEqual(GoalTemplate.forLift(.power, exerciseID: "back_squat"), GoalTemplate.default(.power))
+        XCTAssertFalse(ExerciseCatalog.exercise(id: "push_jerk")!.allowsOneRm)
+    }
+}

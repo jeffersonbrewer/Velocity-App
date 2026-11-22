@@ -104,7 +104,7 @@ struct WeekScheduleCard: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(day?.name ?? "Session").font(.subheadline.weight(.semibold))
                 if let day {
-                    Text("\(ExerciseCatalog.exercise(id: day.mainExerciseID)?.name ?? "") · \(day.goal.rawValue)")
+                    Text(day.extras.isEmpty ? "\(day.liftNames) · \(day.goal.rawValue)" : day.liftNames)
                         .font(.caption).foregroundStyle(Theme.muted)
                 }
             }
@@ -237,8 +237,8 @@ struct PlanWeekView: View {
         for (a, b) in s.backToBack {
             // Which sessions land on these days in a typical week (in order).
             guard let ia = order.firstIndex(of: a), let ib = order.firstIndex(of: b) else { continue }
-            let la = days[ia % days.count].mainExerciseID, lb = days[ib % days.count].mainExerciseID
-            if la == lb {
+            let la = Set(days[ia % days.count].lifts.map(\.exerciseID)), lb = Set(days[ib % days.count].lifts.map(\.exerciseID))
+            if !la.isDisjoint(with: lb) {
                 notes.append("\(names[a - 1]) and \(names[b - 1]) are back to back with the same lift. Leave a day between them if you can.")
             } else {
                 notes.append("\(names[a - 1]) and \(names[b - 1]) are back to back. Fine for different lifts.")

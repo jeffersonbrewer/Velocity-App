@@ -19,8 +19,8 @@ struct ProgramSessionView: View {
         Group {
             if let finished {
                 DebriefView(debriefID: finished)
-            } else if let plan = model.sessionPlan() {
-                content(plan)
+            } else if let day = model.program?.currentDay, !model.sessionPlans().isEmpty {
+                content(day, model.sessionPlans())
             } else {
                 ContentUnavailableView("No session today", systemImage: "calendar",
                                        description: Text("The block is finished, or the main lift needs a profile test first."))
@@ -33,23 +33,83 @@ struct ProgramSessionView: View {
         .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
         .sheet(item: $logging) { draft in
             ManualSetSheet(draft: draft, unit: unit) { d in
-                guard let plan = model.sessionPlan() else { return }
-                model.manualSets.append(ManualSet(date: Date(), exerciseID: plan.day.mainExerciseID, loadKg: d.loadKg, reps: d.reps, rir: d.rir))
+                model.manualSets.append(ManualSet(date: Date(), exerciseID: d.exerciseID, loadKg: d.loadKg, reps: d.reps, rir: d.rir))
             }
         }
     }
 
-    private func content(_ plan: SessionPlan) -> some View {
-        let p = plan.prescription
-        let liftName = ExerciseCatalog.exercise(id: plan.day.mainExerciseID)?.name ?? ""
+    private func content(_ day: ProgramDay, _ plans: [SessionPlan]) -> some View {
+        let readiness = model.sessionReadiness(plans)
+        let blocked = day.lifts.filter { l in !plans.contains { $0.lift.id == l.id } }
         return ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("\(plan.day.name) · \(liftName) · \(p.goal.rawValue)\(plan.week.isDeload ? " · deload" : "")")
+                Text("\(day.name) · \(plans.count > 1 ? day.liftNames : "\(plans[0].lift.name) · \(plans[0].prescription.goal.rawValue)")\(plans[0].week.isDeload ? " · deload" : "")")
                     .foregroundStyle(Theme.muted)
 
+                ForEach(plans, id: \.lift.id) { plan in
+                    liftSection(plan, count: day.lifts.count)
+                }
+                ForEach(blocked) { l in
+                    Card {
+                        CardLabel(text: l.name)
+                        Text(model.programBlocker(l.exerciseID) ?? "This lift isn't ready yet.").font(.subheadline).foregroundStyle(Theme.warn)
+                        Text("Add it from Program › Edit block, or skip it today.").font(.caption).foregroundStyle(Theme.muted)
+                    }
+                }
+
+                // Accessories
+                let accessories = day.accessories.filter { $0.sets(for: readiness) > 0 }
+                if !day.accessories.isEmpty {
+                    Card {
+                        CardLabel(text: "Accessories")
+                        if accessories.isEmpty {
+                            Text("Skipped today: readiness is well down.").font(.subheadline).foregroundStyle(Theme.muted)
+                        }
+                        ForEach(accessories) { a in
+                            AccessorySessionRow(accessory: a, sets: a.sets(for: readiness), unit: unit,
+                                                log: Binding(get: { accessoryLog[a.id] ?? [] }, set: { accessoryLog[a.id] = $0 }),
+                                                loadKg: Binding(get: { accessoryLoad[a.id] ?? a.loadKg }, set: { accessoryLoad[a.id] = $0 }))
+                        }
+                        Text("Log reps and reps in reserve (RIR) for each set. The next session's load is set from them.")
+                            .font(.caption).foregroundStyle(Theme.muted)
+                    }
+                }
+
+                Button { confirmFinish = true } label: {
+                    Text("Finish session").frame(maxWidth: .infinity).fontWeight(.semibold)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .confirmationDialog("Finish today's session?", isPresented: $confirmFinish, titleVisibility: .visible) {
+                    Button("Finish session") {
+                        finished = model.finishSession(plans, accessoryLog: accessoryLog, loadsUsed: accessoryLoad)?.id
+                        if finished == nil { dismiss() }
+                    }
+                } message: {
+                    let missing = plans.filter { $0.setCount == 0 }.map { $0.lift.name.lowercased() }
+                    if !missing.isEmpty {
+                        Text("No \(missing.joined(separator: " or ")) working sets are recorded yet. If you finish now, the program still moves to the next session and those loads stay as they are.")
+                    } else {
+                        Text("The program moves to the next session, each accessory's next load is set from today's reps and RIR, and you get a debrief of the session.")
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+
+    /// One main lift: its warm-up and readiness check, the working sets, and the sets done.
+    @ViewBuilder
+    private func liftSection(_ plan: SessionPlan, count: Int) -> some View {
+        let p = plan.prescription
+        let liftName = plan.lift.name
+        if count > 1 {
+            Text("Lift \(plan.liftIndex + 1) of \(count) · \(liftName) · \(p.goal.rawValue)")
+                .font(.headline).padding(.top, plan.liftIndex > 0 ? 8 : 0)
+        }
                 // 1. Warm-up and readiness
                 Card {
-                    CardLabel(text: "Warm-up and readiness check")
+                    CardLabel(text: count > 1 ? "\(liftName) warm-up and readiness" : "Warm-up and readiness check")
                     if let r = plan.readiness, let d = plan.readinessDelta {
                         HStack {
                             Pill(text: r.rawValue, color: readinessColor(r))
@@ -110,7 +170,7 @@ struct ProgramSessionView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
-                        Button { logging = ManualSetDraft(loadKg: plan.nextLoadKg) } label: {
+                        Button { logging = ManualSetDraft(exerciseID: plan.lift.exerciseID, loadKg: plan.nextLoadKg) } label: {
                             Label("Log a set by hand", systemImage: "square.and.pencil").frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -143,44 +203,6 @@ struct ProgramSessionView: View {
                     }
                 }
 
-                // 3. Accessories
-                let accessories = plan.day.accessories.filter { $0.sets(for: plan.readiness) > 0 }
-                if !plan.day.accessories.isEmpty {
-                    Card {
-                        CardLabel(text: "Accessories")
-                        if accessories.isEmpty {
-                            Text("Skipped today: readiness is well down.").font(.subheadline).foregroundStyle(Theme.muted)
-                        }
-                        ForEach(accessories) { a in
-                            AccessorySessionRow(accessory: a, sets: a.sets(for: plan.readiness), unit: unit,
-                                                log: Binding(get: { accessoryLog[a.id] ?? [] }, set: { accessoryLog[a.id] = $0 }),
-                                                loadKg: Binding(get: { accessoryLoad[a.id] ?? a.loadKg }, set: { accessoryLoad[a.id] = $0 }))
-                        }
-                        Text("Log reps and reps in reserve (RIR) for each set. The next session's load is set from them.")
-                            .font(.caption).foregroundStyle(Theme.muted)
-                    }
-                }
-
-                Button { confirmFinish = true } label: {
-                    Text("Finish session").frame(maxWidth: .infinity).fontWeight(.semibold)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .confirmationDialog("Finish today's session?", isPresented: $confirmFinish, titleVisibility: .visible) {
-                    Button("Finish session") {
-                        finished = model.finishSession(plan, accessoryLog: accessoryLog, loadsUsed: accessoryLoad)?.id
-                        if finished == nil { dismiss() }
-                    }
-                } message: {
-                    if plan.setCount == 0 {
-                        Text("No \(liftName.lowercased()) working sets are recorded yet. If you finish now, the program still moves to the next session and the main lift's loads stay as they are.")
-                    } else {
-                        Text("The program moves to the next session, each accessory's next load is set from today's reps and RIR, and you get a debrief of the session.")
-                    }
-                }
-            }
-            .padding()
-        }
     }
 
     /// What the warm-up did to today's load.
@@ -257,6 +279,7 @@ struct AccessorySessionRow: View {
 
 struct ManualSetDraft: Identifiable {
     let id = UUID()
+    var exerciseID: String
     var loadKg: Double
     var reps = 5
     var rir = 2

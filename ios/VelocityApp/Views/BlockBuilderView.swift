@@ -10,7 +10,7 @@ struct BlockBuilderView: View {
     @State private var program = Program(days: [])
 
     private var unit: WeightUnit { WeightUnit(rawValue: unitRaw) ?? .lb }
-    private let programmable = ExerciseCatalog.all.filter { $0.allowsOneRm }
+    private let programmable = ExerciseCatalog.all
 
     var body: some View {
         NavigationStack {
@@ -31,22 +31,20 @@ struct BlockBuilderView: View {
                 ForEach($program.days) { $day in
                     Section {
                         TextField("Name", text: $day.name)
-                        Picker("Main lift", selection: $day.mainExerciseID) {
-                            ForEach(programmable) { Text($0.name).tag($0.id) }
+                        liftRows(title: day.extras.isEmpty ? "Main lift" : "Main lift 1", exerciseID: $day.mainExerciseID, goal: $day.goal)
+                        ForEach(Array(day.extras.indices), id: \.self) { i in
+                            liftRows(title: "Main lift \(i + 2)", exerciseID: $day.extras[i].exerciseID, goal: $day.extras[i].goal)
+                            Button("Remove main lift \(i + 2)", role: .destructive) { day.extras.remove(at: i) }
+                                .font(.subheadline)
                         }
-                        Picker("Goal", selection: $day.goal) {
-                            ForEach(TrainingGoal.allCases) { Text($0.rawValue).tag($0) }
-                        }
-                        let t = GoalTemplate.default(day.goal)
-                        Text("\(Int(t.pctLow * 100))–\(Int(t.pctHigh * 100))% 1RM · stop at \(Int(t.lossLow))–\(Int(t.lossHigh))% loss · \(t.setsLow)–\(t.setsHigh) sets")
-                            .font(.caption).foregroundStyle(Theme.muted)
-                        KnownOneRmField(exerciseID: day.mainExerciseID, unit: unit)
-                        if let why = model.programBlocker(day.mainExerciseID) {
-                            Text(why).font(.caption).foregroundStyle(Theme.warn)
-                        } else if let orm = model.programOneRm(day.mainExerciseID) {
-                            Text(orm.fromProfile ? "Using your profile's estimated 1RM (\(unit.format(kg: unit.roundedToStep(kg: orm.kg))) \(unit.rawValue)). An entered 1RM is used instead once it's newer than your last profile test."
-                                                 : "Using the 1RM you entered. A new profile test replaces it.")
-                                .font(.caption).foregroundStyle(Theme.muted)
+                        if day.extras.count < 2 {
+                            Button {
+                                let next = programmable.first { e in !day.lifts.contains { $0.exerciseID == e.id } } ?? programmable[0]
+                                day.extras.append(MainLift(exerciseID: next.id, goal: day.goal == .power ? .maxStrength : .power))
+                            } label: {
+                                Label(day.extras.isEmpty ? "Add a second main lift" : "Add another main lift", systemImage: "plus.circle")
+                            }
+                            .font(.subheadline)
                         }
                         ForEach($day.accessories) { $a in
                             AccessoryEditor(accessory: $a, goal: day.goal, unit: unit)
@@ -105,6 +103,29 @@ struct BlockBuilderView: View {
             ForEach(flags, id: \.self) { Label($0, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(Theme.warn) }
         } header: { Text("Movement patterns this week") } footer: {
             Text("Main lifts and accessories together. A combo counts toward each pattern it trains.")
+        }
+    }
+
+    /// A main lift's pickers, its goal's numbers, and its 1RM.
+    @ViewBuilder
+    private func liftRows(title: String, exerciseID: Binding<String>, goal: Binding<TrainingGoal>) -> some View {
+        Picker(title, selection: exerciseID) {
+            ForEach(programmable) { Text($0.name).tag($0.id) }
+        }
+        Picker("Goal", selection: goal) {
+            ForEach(TrainingGoal.allCases) { Text($0.rawValue).tag($0) }
+        }
+        let t = GoalTemplate.forLift(goal.wrappedValue, exerciseID: exerciseID.wrappedValue)
+        Text("\(Int(t.pctLow * 100))–\(Int(t.pctHigh * 100))% 1RM · stop at \(Int(t.lossLow))–\(Int(t.lossHigh))% loss · \(t.setsLow)–\(t.setsHigh) sets of up to \(t.repCapPerSet)")
+            .font(.caption).foregroundStyle(Theme.muted)
+        KnownOneRmField(exerciseID: exerciseID.wrappedValue, unit: unit)
+            .id(exerciseID.wrappedValue)
+        if let why = model.programBlocker(exerciseID.wrappedValue) {
+            Text(why).font(.caption).foregroundStyle(Theme.warn)
+        } else if let orm = model.programOneRm(exerciseID.wrappedValue) {
+            Text(orm.fromProfile ? "Using your profile's estimated 1RM (\(unit.format(kg: unit.roundedToStep(kg: orm.kg))) \(unit.rawValue)). An entered 1RM is used instead once it's newer than your last profile test."
+                                 : "Using the 1RM you entered. A new profile test replaces it.")
+                .font(.caption).foregroundStyle(Theme.muted)
         }
     }
 

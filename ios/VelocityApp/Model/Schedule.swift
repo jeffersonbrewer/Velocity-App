@@ -80,14 +80,15 @@ extension Program {
 
 extension AppModel {
     /// The main lift's expected load and first-rep zone for a future session (readiness not known yet).
-    func preview(_ s: PlannedSession) -> (day: ProgramDay, prescription: MainLiftPrescription)? {
-        guard let program, let day = program.days[safe: s.dayIndex], let orm = programOneRm(day.mainExerciseID)?.kg else { return nil }
-        let plans = program.weekPlans(for: day)
+    func preview(_ s: PlannedSession, liftIndex: Int = 0) -> (day: ProgramDay, prescription: MainLiftPrescription)? {
+        guard let program, let day = program.days[safe: s.dayIndex], let lift = day.lifts[safe: liftIndex],
+              let orm = programOneRm(lift.exerciseID)?.kg else { return nil }
+        let plans = program.weekPlans(for: lift)
         let week = (program.progress.inResponsiveDeload && s.week == program.progress.week)
-            ? BlockPlanner.deload(for: .default(day.goal)) : plans[min(max(s.week - 1, 0), plans.count - 1)]
+            ? BlockPlanner.deload(for: lift.template) : plans[min(max(s.week - 1, 0), plans.count - 1)]
         let u = unit
-        let p = Prescriber.mainLift(goal: day.goal, template: .default(day.goal), week: week, oneRmKg: orm,
-                                    line: velocityLine(day.mainExerciseID)?.line, readiness: nil, round: { u.roundedToStep(kg: $0) })
+        let p = Prescriber.mainLift(goal: lift.goal, template: lift.template, week: week, oneRmKg: orm,
+                                    line: velocityLine(lift.exerciseID)?.line, readiness: nil, round: { u.roundedToStep(kg: $0) })
         return (day, p)
     }
 
@@ -140,10 +141,15 @@ extension AppModel {
         guard let date = s.date, let pv = preview(s) else { return }
         let day = pv.day, p = pv.prescription
         let u = unit
-        let lift = ExerciseCatalog.exercise(id: day.mainExerciseID)?.name ?? day.mainExerciseID
+        let lift = day.liftNames
         var notes = ["\(p.goal.rawValue) · week \(s.week) of \(program?.weeks ?? 6)\(p.week.isDeload ? " (deload)" : "")",
                      "Expected load: about \(u.format(kg: p.loadKg)) \(u.rawValue)"]
         if let lo = p.zoneLow, let hi = p.zoneHigh { notes.append("First-rep target: \(Fmt.velocity(lo))–\(Fmt.velocity(hi)) m/s") }
+        for i in day.extras.indices {
+            if let x = preview(s, liftIndex: i + 1) {
+                notes.append("Then \(day.extras[i].name), \(x.prescription.goal.rawValue.lowercased()): about \(u.format(kg: x.prescription.loadKg)) \(u.rawValue)")
+            }
+        }
         if !day.accessories.isEmpty { notes.append("Accessories: " + day.accessories.map(\.name).joined(separator: ", ")) }
         notes.append("Planned by Velocity. Moving or skipping the session in the app updates this event.")
         let minutes = program?.schedule?.sessionMinutes ?? 75

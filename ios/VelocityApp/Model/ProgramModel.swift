@@ -4,6 +4,9 @@ import VelocityCore
 /// Today's main lift for the program, worked out from the plan and the lifter's profile.
 struct SessionPlan {
     var day: ProgramDay
+    /// The main lift this plan is for (the day's first, or a later one).
+    var lift: MainLift
+    var liftIndex: Int
     var week: WeekPlan
     var oneRmKg: Double
     var readinessLoadKg: Double
@@ -59,7 +62,9 @@ extension AppModel {
     /// Why a main lift can't be programmed yet, or nil when it has a 1RM.
     func programBlocker(_ exerciseID: String) -> String? {
         let ex = ExerciseCatalog.exercise(id: exerciseID)
-        if ex?.allowsOneRm == false { return "\(ex?.name ?? "This lift") can't be programmed by %1RM." }
+        if ex?.allowsOneRm == false, programOneRm(exerciseID) == nil {
+            return "Enter your best \(ex?.name.lowercased() ?? "lift") as a known 1RM: the plan sets loads from it. Velocity can't estimate a 1RM for this lift."
+        }
         if programOneRm(exerciseID) == nil {
             return "Enter a known 1RM for \(ex?.name ?? "this lift"), or record a profile test: the plan turns %1RM into loads from it."
         }
@@ -73,20 +78,33 @@ extension AppModel {
         prefs[exerciseID] = p
     }
 
-    /// The plan for today's session, or nil when there's no program or the profile isn't ready.
-    func sessionPlan() -> SessionPlan? {
-        guard let program, let day = program.currentDay else { return nil }
-        let prof = profile(for: day.mainExerciseID)
-        guard let orm = programOneRm(day.mainExerciseID)?.kg else { return nil }
-        let vl = velocityLine(day.mainExerciseID)
+    /// Today's plan for each main lift that has a 1RM, in the day's order.
+    func sessionPlans() -> [SessionPlan] {
+        guard let program, let day = program.currentDay else { return [] }
+        return day.lifts.enumerated().compactMap { i, lift in sessionPlan(day: day, lift: lift, index: i, program: program) }
+    }
+
+    /// The plan for one of today's lifts: the one named, else the one the camera is set up for, else the first.
+    func sessionPlan(_ exerciseID: String? = nil) -> SessionPlan? {
+        let all = sessionPlans()
+        let id = exerciseID ?? sessionTargets?.exerciseID
+        return all.first { $0.lift.exerciseID == id } ?? all.first
+    }
+
+    /// Readiness for the whole session (accessories, the block's Down count): the first lift that has a reading.
+    func sessionReadiness(_ plans: [SessionPlan]) -> Readiness? { plans.lazy.compactMap(\.readiness).first }
+
+    private func sessionPlan(day: ProgramDay, lift: MainLift, index: Int, program: Program) -> SessionPlan? {
+        guard let orm = programOneRm(lift.exerciseID)?.kg else { return nil }
+        let vl = velocityLine(lift.exerciseID)
         let line = vl?.line
         let u = unit
         let round = { (kg: Double) in u.roundedToStep(kg: kg) }
-        let week = program.weekPlan(for: day)
+        let week = program.weekPlan(for: lift)
 
         // Readiness from today's set nearest 60% 1RM (within ±10%).
         let target60 = round(0.60 * orm)
-        let today = sets(on: Date()).filter { $0.exerciseID == day.mainExerciseID }.reversed()
+        let today = sets(on: Date()).filter { $0.exerciseID == lift.exerciseID }.reversed()
         let rSet = today.first { s in
             guard let m = s.analysis.setMetrics, m.repCount > 0 else { return false }
             return abs(m.loadKg - target60) <= 0.10 * target60
@@ -97,9 +115,7 @@ extension AppModel {
             let d = m.bestMeanVelocity - line.velocity(atLoad: m.loadKg)
             reading = Readiness(deltaMetersPerSecond: d); delta = d
         }
-        _ = prof
-
-        let p = Prescriber.mainLift(goal: day.goal, template: .default(day.goal), week: week, oneRmKg: orm, line: line,
+        let p = Prescriber.mainLift(goal: lift.goal, template: lift.template, week: week, oneRmKg: orm, line: line,
                                     readiness: reading, round: round)
         // Working sets: today's sets of the main lift at or above 90% of the planned load.
         let done = today.filter { s in
@@ -111,7 +127,7 @@ extension AppModel {
             let r = Prescriber.nextLoad(after: last.analysis.input.loadKg, firstRepMV: first, prescription: p, stepKg: u.toKg(u.step))
             next = round(r.loadKg); reason = r.reason
         }
-        let todays = manualSets.filter { $0.exerciseID == day.mainExerciseID && Calendar.current.isDateInToday($0.date) }
+        let todays = manualSets.filter { $0.exerciseID == lift.exerciseID && Calendar.current.isDateInToday($0.date) }
             .sorted { $0.date < $1.date }
         let manual = todays.filter { $0.addedToSetID == nil }
         let added = todays.filter { $0.addedToSetID != nil }.map(\.reps).reduce(0, +)
@@ -120,7 +136,7 @@ extension AppModel {
             next = m.loadKg; reason = nil
         }
         let reps = done.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +) + manual.map(\.reps).reduce(0, +) + added
-        return SessionPlan(day: day, week: week, oneRmKg: orm, readinessLoadKg: target60, readinessSet: rSet, readiness: reading,
+        return SessionPlan(day: day, lift: lift, liftIndex: index, week: week, oneRmKg: orm, readinessLoadKg: target60, readinessSet: rSet, readiness: reading,
                            readinessDelta: delta, prescription: p, setsDone: Array(done), manualDone: manual, addedReps: added,
                            nextLoadKg: next, nextLoadReason: reason,
                            doneReason: Prescriber.liftDone(setsDone: done.count + manual.count, repsDone: reps, prescription: p),
@@ -129,7 +145,7 @@ extension AppModel {
 
     /// Point the Today screen and camera at a load, with the session's loss cutoff and target zone.
     func prepareMainSet(_ plan: SessionPlan, loadKg: Double) {
-        let id = plan.day.mainExerciseID
+        let id = plan.lift.exerciseID
         currentExerciseID = id
         nextSetType = .working
         var p = prefs(for: id)
@@ -146,12 +162,15 @@ extension AppModel {
     /// Close today's session: advance the block, and set each accessory's next load from its reps and RIR.
     /// Returns the session's debrief.
     @discardableResult
-    func finishSession(_ plan: SessionPlan, accessoryLog: [UUID: [AccessorySet]], loadsUsed: [UUID: Double]) -> SessionDebrief? {
-        guard var program else { return nil }
+    func finishSession(_ plans: [SessionPlan], accessoryLog: [UUID: [AccessorySet]], loadsUsed: [UUID: Double]) -> SessionDebrief? {
+        guard var program, let plan = plans.first else { return nil }
+        let readiness = sessionReadiness(plans)
         var debrief = makeDebrief(plan, accessoryLog: accessoryLog)
+        let others = plans.dropFirst().map { makeDebrief($0, accessoryLog: [:]) }
+        debrief.otherLifts = others.isEmpty ? nil : others
         let dayIndex = program.progress.day
         program.log.append(ProgramSessionLog(date: Date(), week: program.progress.week, dayIndex: dayIndex,
-                                             deload: plan.week.isDeload, reading: plan.readiness))
+                                             deload: plan.week.isDeload, reading: readiness))
         let u = unit
         if let i = program.days.firstIndex(where: { $0.id == plan.day.id }) {
             var changes: [AccessoryChange] = []
@@ -164,13 +183,13 @@ extension AppModel {
                 let r = today.next(after: log, round: round)
                 changes.append(AccessoryChange(name: a.name, usedKg: today.loadKg, nextKg: r.plan.loadKg, reps: log.map(\.reps),
                                                rirs: log.map { $0.rir ?? a.rir }, repLow: a.repLow, repHigh: a.repHigh,
-                                               targetRIR: a.rir, setsPlanned: a.sets(for: plan.readiness),
+                                               targetRIR: a.rir, setsPlanned: a.sets(for: readiness),
                                                eachHand: a.exercise?.equipment == .dumbbell, note: r.note))
                 return r.plan
             }
             debrief.accessories = changes
         }
-        program.progress.finishSession(reading: plan.readiness, weeks: program.weeks, daysPerWeek: program.days.count)
+        program.progress.finishSession(reading: readiness, weeks: program.weeks, daysPerWeek: program.days.count)
         self.program = program
         addNext(to: &debrief)
         debriefs.insert(debrief, at: 0)
@@ -194,6 +213,7 @@ extension AppModel {
     /// After a program set: what happens next, in plain words (readiness result or next load).
     func afterSetSummary(setID: UUID) -> (text: String, isWarmUp: Bool, done: Bool)? {
         guard sessionTargets != nil, let plan = sessionPlan() else { return nil }
+        let nextLift = sessionPlans().first { $0.liftIndex > plan.liftIndex && $0.doneReason == nil }
         let u = unit
         let lb = { (kg: Double) in "\(u.format(kg: kg)) \(u.rawValue)" }
         let p = plan.prescription
@@ -208,7 +228,10 @@ extension AppModel {
             }
             return ("Warm-up saved as today's 60% set. Readiness starts next session, once your velocity targets are learned from today's sets. " + change, true, false)
         }
-        if let done = plan.doneReason { return ("\(done) Log your accessories, then finish the session.", false, true) }
+        if let done = plan.doneReason {
+            if let n = nextLift { return ("\(done) Next lift: \(n.lift.name), \(n.lift.goal.rawValue.lowercased()). Start with its warm-up.", false, true) }
+            return ("\(done) Log your accessories, then finish the session.", false, true)
+        }
         var t = "Next set: \(lb(plan.nextLoadKg))"
         if let why = plan.nextLoadReason { t += ". " + why } else { t += "." }
         t += " Stop at \(Fmt.percent(p.lossCutoffPct)) loss or \(p.repCapPerSet) reps."

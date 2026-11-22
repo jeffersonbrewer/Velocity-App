@@ -145,7 +145,7 @@ public enum AccessoryLibraryData {
         switch id {
         case "back_squat", "front_squat", "box_squat": return .squat
         case "bench_press": return .horizontalPush
-        case "overhead_press", "dip": return .verticalPush
+        case "overhead_press", "dip", "push_jerk", "split_jerk": return .verticalPush
         case "prone_bench_pull", "pendlay_row": return .horizontalPull
         case "pull_up": return .verticalPull
         default: return .hinge   // deadlifts, hip thrust, power clean

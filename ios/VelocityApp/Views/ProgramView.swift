@@ -140,14 +140,23 @@ struct ProgramView: View {
                 else if prog.week == program.weeks { Pill(text: "Deload week", color: Theme.warn) }
             }
             if let day = program.currentDay {
-                Text("\(day.name): \(name(day.mainExerciseID))").font(.title3.weight(.bold))
-                Text(day.goal.rawValue).foregroundStyle(Theme.muted)
-                if let why = model.programBlocker(day.mainExerciseID) {
+                Text("\(day.name): \(day.liftNames)").font(.title3.weight(.bold))
+                Text(day.lifts.map(\.goal.rawValue).joined(separator: " + ")).foregroundStyle(Theme.muted)
+                if let blocked = day.lifts.first(where: { model.programBlocker($0.exerciseID) != nil }),
+                   let why = model.programBlocker(blocked.exerciseID) {
                     Text(why).font(.subheadline).foregroundStyle(Theme.warn)
-                    Button { testingExercise = day.mainExerciseID } label: {
-                        Text("Guided profile test").frame(maxWidth: .infinity)
+                    if ExerciseCatalog.exercise(id: blocked.exerciseID)?.allowsOneRm != false {
+                        Button { testingExercise = blocked.exerciseID } label: {
+                            Text("Guided profile test").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
+                    if day.lifts.contains(where: { model.programBlocker($0.exerciseID) == nil }) {
+                        NavigationLink(value: "session") {
+                            Text("Start without \(blocked.name.lowercased())").frame(maxWidth: .infinity).fontWeight(.semibold)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                 } else {
                     NavigationLink(value: "session") {
                         Text("Start today's session").frame(maxWidth: .infinity).fontWeight(.semibold)
@@ -163,8 +172,11 @@ struct ProgramView: View {
             CardLabel(text: "The block")
             ForEach(program.days) { day in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(day.name) · \(name(day.mainExerciseID)) · \(day.goal.rawValue)").font(.subheadline.weight(.semibold))
-                    let plans = program.weekPlans(for: day)
+                    if day.lifts.count > 1 { Text(day.name).font(.subheadline.weight(.bold)) }
+                    ForEach(day.lifts) { lift in
+                    Text("\(day.lifts.count > 1 ? "" : "\(day.name) · ")\(lift.name) · \(lift.goal.rawValue)")
+                        .font(.subheadline.weight(.semibold))
+                    let plans = program.weekPlans(for: lift)
                     ForEach(Array(plans.enumerated()), id: \.offset) { i, w in
                         HStack {
                             Text("Wk \(i + 1)").frame(width: 44, alignment: .leading)
@@ -176,6 +188,7 @@ struct ProgramView: View {
                         }
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(i + 1 == program.progress.week ? Color.primary : Theme.muted)
+                    }
                     }
                     if !day.accessories.isEmpty {
                         Text("Accessories: " + day.accessories.map(\.name).joined(separator: ", "))
@@ -189,7 +202,7 @@ struct ProgramView: View {
 
     private func mainLifts(_ p: Program) -> [String] {
         var seen = Set<String>()
-        return p.days.map(\.mainExerciseID).filter { seen.insert($0).inserted }
+        return p.days.flatMap { $0.lifts.map(\.exerciseID) }.filter { seen.insert($0).inserted }
     }
 
     private func name(_ id: String) -> String { ExerciseCatalog.exercise(id: id)?.name ?? id }
