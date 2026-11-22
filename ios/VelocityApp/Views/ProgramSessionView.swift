@@ -215,13 +215,11 @@ struct AccessorySessionRow: View {
             Text(accessory.name).font(.subheadline.weight(.semibold))
             Text("\(sets) × \(accessory.repLow)–\(accessory.repHigh), stop at \(accessory.rir) RIR")
                 .font(.caption).foregroundStyle(Theme.muted)
-            if takesLoad {
-                if accessory.loadKg <= 0 {
-                    Text("First time: pick a load you'd get about \(accessory.targetReps) reps with \(accessory.rir) in reserve, and enter it here.")
-                        .font(.caption).foregroundStyle(Theme.accent)
-                }
-                LoadField(loadKg: $loadKg, unit: unit, label: e?.equipment == .dumbbell ? "Load (each)" : "Load")
+            if takesLoad && accessory.loadKg <= 0 {
+                Text("First time: pick a load you'd get about \(accessory.targetReps) reps with \(accessory.rir) in reserve, and enter it here.")
+                    .font(.caption).foregroundStyle(Theme.accent)
             }
+            LoadField(loadKg: $loadKg, unit: unit, label: loadLabel(e))
             ForEach(0..<sets, id: \.self) { i in
                 HStack {
                     Text("Set \(i + 1)").foregroundStyle(Theme.muted)

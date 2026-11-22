@@ -155,10 +155,10 @@ struct AccessoryEditor: View {
                 Stepper("Top of rep range", value: $accessory.repHigh, in: accessory.repLow...30).labelsHidden()
             }
             Stepper("Stop at \(accessory.rir) RIR", value: Binding(get: { accessory.rir }, set: { accessory.targetRIR = $0 }), in: 0...5)
-            if e?.takesLoad ?? true {
-                LoadField(loadKg: $accessory.loadKg, unit: unit, label: e?.equipment == .dumbbell ? "Start load (each)" : "Start load")
-            } else {
-                Text(e?.ballistic == true ? "Fast reps: progress by reps and quality, not load." : "Bodyweight: add load once every set reaches the top of the range.")
+            // Every accessory can take a load; for bodyweight moves it's added load (vest, belt, plate).
+            LoadField(loadKg: $accessory.loadKg, unit: unit, label: loadLabel(e, start: true))
+            if e?.takesLoad == false {
+                Text("Bodyweight: leave at 0, or enter added load (vest, belt or plate). With 0, add load once every set reaches the top of the range.")
                     .font(.caption).foregroundStyle(Theme.muted)
             }
         }
@@ -253,4 +253,15 @@ struct KnownOneRmField: View {
         }
         .onChange(of: exerciseID) { _, _ in draftKg = nil; justSaved = false }
     }
+}
+
+/// The load field's label for an accessory: per hand for dumbbells, added load for bodyweight moves.
+func loadLabel(_ e: AccessoryExercise?, start: Bool = false) -> String {
+    let base: String
+    switch e?.equipment {
+    case .dumbbell?: base = "Load (each)"
+    case .bodyweight?: base = "Added load"
+    default: base = "Load"
+    }
+    return start ? "Start " + base.prefix(1).lowercased() + base.dropFirst() : base
 }
