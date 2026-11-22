@@ -440,4 +440,23 @@ final class LiveRepTests: XCTestCase {
         for k in s.t.indices { _ = off.add(time: s.t[k], yPixels: s.yPx[k], radiusPx: 100) }
         XCTAssertFalse(off.settled)
     }
+
+    func testSettlesWhenPlateHiddenAfterLastRep() {
+        // The plate goes out of view right after the last rep (racked behind an upright).
+        let s = makeSet(upTimes: [0.8, 0.8], pause: 2.5, end: 0)
+        let live = LiveRepCounter(lossCutoffPct: 20, repCap: nil, settleSeconds: 3)
+        var reps = 0
+        for k in s.t.indices { reps += live.add(time: s.t[k], yPixels: s.yPx[k], radiusPx: 100).count }
+        XCTAssertEqual(reps, 2)
+        let last = s.t.last!
+        live.missing(time: last + 2)
+        XCTAssertFalse(live.settled, "not before settleSeconds")
+        live.missing(time: last + 3.1)
+        XCTAssertTrue(live.settled)
+        // Hidden before any rep: never ends the set.
+        let early = LiveRepCounter(lossCutoffPct: 20, repCap: nil, settleSeconds: 3)
+        _ = early.add(time: 0, yPixels: 500, radiusPx: 100)
+        early.missing(time: 10)
+        XCTAssertFalse(early.settled)
+    }
 }

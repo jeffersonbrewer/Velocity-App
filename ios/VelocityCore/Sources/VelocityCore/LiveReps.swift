@@ -77,10 +77,23 @@ public final class LiveRepCounter {
         filter = Biquad(lowpassCutoff: cutoffHz, sampleRate: 100)
     }
 
+    /// True while a lift is under way (from the start of a rep until it has ended).
+    public var inRep: Bool { upStart != nil }
+    private var lastSeenT: Double?
+
+    /// A frame where the plate wasn't found. Once at least one rep is counted and no rep is under
+    /// way, a plate hidden for `settleSeconds` also ends the set: racking the bar often puts the
+    /// plate behind an upright or the lifter's hands, so it can't be seen sitting still.
+    public func missing(time t: Double) {
+        guard let s = settleSeconds, !settled, !reps.isEmpty, upStart == nil, let seen = lastSeenT else { return }
+        if t - seen >= s { settled = true }
+    }
+
     /// Add one tracked frame: time in seconds, plate centre y and radius in image pixels
     /// (y grows downward, as in the image). Returns any reps completed by this frame.
     public func add(time t: Double, yPixels: Double, radiusPx: Double) -> [RepEvent] {
         guard yPixels.isFinite, radiusPx.isFinite, radiusPx > 0 else { return [] }
+        lastSeenT = t
         if metersPerPixel == nil {
             radii.append(radiusPx)
             guard radii.count >= 15 else { return [] }

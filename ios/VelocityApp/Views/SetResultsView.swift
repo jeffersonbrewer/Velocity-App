@@ -25,6 +25,20 @@ struct SetResultsView: View {
     }
 
     @ViewBuilder
+    /// Reps the camera missed (plate hidden, recording stopped early): added by hand, reps only.
+    private func missedRepsCard(_ set: AnalyzedSet) -> some View {
+        let n = model.addedReps(to: set.id)
+        return Card {
+            Stepper(value: Binding(get: { n }, set: { model.setAddedReps(max(0, $0), to: set) }), in: 0...30) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(n == 0 ? "Missed reps" : "Missed reps: \(n) added").font(.subheadline.weight(.semibold))
+                    Text("Reps the camera didn't catch. They count toward session volume, with no velocity.")
+                        .font(.caption).foregroundStyle(Theme.muted)
+                }
+            }
+        }
+    }
+
     private func content(_ set: AnalyzedSet) -> some View {
         let a = set.analysis
         let m = a.setMetrics
@@ -44,6 +58,7 @@ struct SetResultsView: View {
                     byRepCard(m, zone: a.input.targetMeanVelocity)
                     if let cutoff = m.velocityLossThresholdPct { lossCard(m, cutoff: cutoff) }
                     repTable(set, m)
+                    missedRepsCard(set)
                     BetaNote()
                     detailsCard(a)
                 } else {

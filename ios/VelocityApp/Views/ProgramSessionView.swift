@@ -57,9 +57,11 @@ struct ProgramSessionView: View {
                                 .font(.subheadline).foregroundStyle(Theme.muted)
                         }
                         ForEach(p.notes, id: \.self) { Text($0).font(.subheadline) }
-                    } else if plan.readinessSet != nil {
-                        Label("60% set recorded. Readiness checks start once your velocity targets are learned.", systemImage: "checkmark.circle")
+                        Text(loadChange(p)).font(.subheadline.weight(.semibold))
+                    } else if let w = plan.readinessSet {
+                        Label("60% set recorded at \(unit.format(kg: w.analysis.input.loadKg)) \(unit.rawValue). Readiness starts next session, once your velocity targets are learned from today's sets.", systemImage: "checkmark.circle")
                             .font(.subheadline).foregroundStyle(Theme.muted)
+                        Text(loadChange(p)).font(.subheadline.weight(.semibold))
                     } else {
                         Text("Build up with 1–2 lighter sets, then record 2–3 fast reps at \(unit.format(kg: plan.readinessLoadKg)) \(unit.rawValue) (60% 1RM). \(p.zoneLow == nil ? "It's used to learn your velocity targets." : "Today's load adjusts from it.")")
                             .font(.subheadline).foregroundStyle(Theme.muted)
@@ -79,6 +81,9 @@ struct ProgramSessionView: View {
                         CardLabel(text: "\(liftName) · set \(min(plan.setCount + 1, p.sets)) of \(p.sets)")
                         Spacer()
                         Text("Week \(model.program?.progress.week ?? 1)").font(.caption).foregroundStyle(Theme.muted)
+                    }
+                    if model.rest != nil {
+                        TimelineView(.periodic(from: .now, by: 1)) { ctx in RestTimerBar(now: ctx.date) }
                     }
                     if let done = plan.doneReason {
                         Label(done, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.good).font(.headline)
@@ -176,6 +181,14 @@ struct ProgramSessionView: View {
             }
             .padding()
         }
+    }
+
+    /// What the warm-up did to today's load.
+    private func loadChange(_ p: MainLiftPrescription) -> String {
+        let diff = p.loadKg - p.plannedLoadKg
+        let lb = { (kg: Double) in "\(unit.format(kg: kg)) \(unit.rawValue)" }
+        if abs(unit.fromKg(diff)) < unit.step / 2 { return "Today's load stays at \(lb(p.loadKg)), as planned." }
+        return diff < 0 ? "Today's load drops \(lb(-diff)) to \(lb(p.loadKg))." : "Today's load goes up \(lb(diff)) to \(lb(p.loadKg))."
     }
 
     private func row(_ label: String, _ value: String) -> some View {

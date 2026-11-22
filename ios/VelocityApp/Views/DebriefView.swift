@@ -74,7 +74,7 @@ struct DebriefView: View {
                 CardLabel(text: "The numbers").padding(.top, 6)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible())], spacing: 10) {
                     tile("Readiness", d.readiness?.rawValue ?? "–",
-                         d.readinessDelta.map { String(format: "%+.2f m/s vs profile", $0) } ?? "no check today",
+                         d.readinessDelta.map { String(format: "%+.2f m/s vs profile", $0) } ?? (d.readinessLoadKg != nil ? "starts next session" : "no check today"),
                          d.readiness.map(readinessColor) ?? .primary)
                     tile("Best rep", d.bestMV.map { "\(Fmt.velocity($0)) m/s" } ?? "–",
                          d.bestMVChange.map { c in String(format: "%+.2f vs %@", c, d.compareDate?.formatted(.dateTime.month(.abbreviated).day()) ?? "") }

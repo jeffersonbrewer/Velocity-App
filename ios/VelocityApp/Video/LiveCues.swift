@@ -40,6 +40,17 @@ final class LiveCuePlayer {
         }
     }
 
+    /// Rest cues: a soft double tone 30 seconds before rest is done, a rising tone when it is.
+    func restWarning() { play([(660, 0.10), (0, 0.08), (660, 0.10)]) }
+    func restDone() { play([(523, 0.12), (0, 0.04), (659, 0.12), (0, 0.04), (784, 0.25)]) }
+
+    /// Say something (the next load and stop rule at the start of rest).
+    func say(_ text: String) {
+        let u = AVSpeechUtterance(string: text)
+        u.rate = 0.5
+        speech.speak(u)
+    }
+
     /// Play tones (frequency Hz, seconds); frequency 0 is silence.
     private func play(_ tones: [(Double, Double)]) {
         guard started else { return }

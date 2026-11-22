@@ -23,6 +23,9 @@ struct CameraSetupView: View {
     @State private var showDetails = false
     @State private var dimmer = ScreenDimmer()
     @AppStorage(SettingsKey.dimWhileRecording) private var dimWhileRecording = true
+    @State private var restCueKey: Date?
+    @State private var restWarned = false
+    @State private var restDoneSounded = false
 
     init(test: ProfileTestPlan? = nil) { _test = State(initialValue: test) }
 
@@ -45,7 +48,10 @@ struct CameraSetupView: View {
                         .disabled(isRecording || analyzing != nil)
                 }
             }
-            .navigationDestination(item: $resultID) { id in SetResultsView(setID: id) }
+            .navigationDestination(item: $resultID) { id in
+                SetResultsView(setID: id)
+                    .safeAreaInset(edge: .bottom) { afterSetPanel(id) }
+            }
             .onAppear {
                 UIApplication.shared.isIdleTimerDisabled = true  // keep the screen on between sets
                 camera.start()
@@ -59,12 +65,13 @@ struct CameraSetupView: View {
                 model.sessionTargets = nil
             }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
-            .onReceive(ticker) { now = $0 }
+            .onReceive(ticker) { now = $0; restCues() }
             .onChange(of: camera.liveSettled) { _, done in
                 if done && isRecording { stopAndAnalyze() }   // the bar has stayed still after the last rep
             }
             .onChange(of: isRecording) { _, rec in
                 if rec && dimWhileRecording { dimmer.dim() } else { dimmer.restore() }
+                if rec { model.rest = nil }   // the next set has started
             }
             .simultaneousGesture(TapGesture().onEnded { if dimmer.isDimmed { dimmer.peek() } })
             .sheet(isPresented: $showDetails, onDismiss: refreshTest) {
@@ -100,6 +107,13 @@ struct CameraSetupView: View {
                     plateChip
                     levelChip
                     fpsChip
+                }
+                .padding(8)
+            }
+            if test == nil && !isRecording && analyzing == nil && model.rest != nil {
+                VStack {
+                    Spacer()
+                    RestTimerBar(now: now, detail: restDetail)
                 }
                 .padding(8)
             }
@@ -501,18 +515,47 @@ struct CameraSetupView: View {
         let type = model.nextSetType
         let keep = keepVideos
         let hint = camera.recordedHint
+        let liveCount = camera.liveReps.count
+        let inProgram = model.sessionTargets != nil
+        if test == nil { model.startRest() }
         camera.stopRecording { url in
             guard let url else { errorText = "Nothing was recorded. Try again."; return }
             camera.stop()  // free the processor for the analysis
             analyzing = VideoTracker.Progress(fraction: 0, plateFound: false)
             Task {
+                // Keep analyzing if the lifter leaves the app; if iOS stops it anyway, try again
+                // once the app is back in front.
+                var bg = UIBackgroundTaskIdentifier.invalid
+                bg = UIApplication.shared.beginBackgroundTask(withName: "Analyze set") {
+                    UIApplication.shared.endBackgroundTask(bg); bg = .invalid
+                }
+                defer { if bg != .invalid { UIApplication.shared.endBackgroundTask(bg) } }
                 do {
-                    let analysis = try await Task.detached(priority: .userInitiated) {
-                        let track = try await VideoTracker.track(AVURLAsset(url: url), hint: hint) { p in
-                            Task { @MainActor in analyzing = p }
+                    var result: SetAnalysis?
+                    var lastError: Error?
+                    for attempt in 0..<2 where result == nil {
+                        if attempt > 0 {
+                            while UIApplication.shared.applicationState != .active { try? await Task.sleep(for: .milliseconds(500)) }
                         }
-                        return try SetAnalyzer.analyze(track: track, input: input, settings: settings)
-                    }.value
+                        do {
+                            result = try await Task.detached(priority: .userInitiated) {
+                                let track = try await VideoTracker.track(AVURLAsset(url: url), hint: hint) { p in
+                                    Task { @MainActor in analyzing = p }
+                                }
+                                return try SetAnalyzer.analyze(track: track, input: input, settings: settings)
+                            }.value
+                        } catch {
+                            lastError = error
+                        }
+                    }
+                    guard let analysis = result else {
+                        // Never lose the set: in a program session, keep the live rep count as a set logged by hand.
+                        if inProgram && liveCount > 0 {
+                            model.manualSets.append(ManualSet(date: Date(), exerciseID: id, loadKg: input.loadKg, reps: liveCount, rir: nil))
+                            throw AnalysisFallback.savedLiveCount(liveCount)
+                        }
+                        throw lastError ?? AnalysisFallback.failed
+                    }
                     let set = AnalyzedSet(date: Date(), clipName: "Recorded set", setType: type, analysis: analysis)
                     analyzing = nil
                     if var plan = test, let i = plan.currentIndex {
@@ -538,6 +581,7 @@ struct CameraSetupView: View {
                     } else {
                         model.add(set)
                         resultID = set.id
+                        announceNext()
                     }
                 } catch {
                     analyzing = nil
@@ -549,6 +593,83 @@ struct CameraSetupView: View {
                 try? FileManager.default.removeItem(at: url)
             }
         }
+    }
+
+    enum AnalysisFallback: LocalizedError {
+        case savedLiveCount(Int)
+        case failed
+        var errorDescription: String? {
+            switch self {
+            case .savedLiveCount(let n): return "The analysis didn't finish, so the live count (\(n) rep\(n == 1 ? "" : "s")) was saved as a set logged by hand."
+            case .failed: return "The analysis didn't finish. Record the set again, or log it by hand."
+            }
+        }
+    }
+
+    // MARK: Between sets
+
+    /// Under the set results: what happens next, the rest timer, and Next set.
+    private func afterSetPanel(_ id: UUID) -> some View {
+        let summary = model.afterSetSummary(setID: id)
+        return VStack(alignment: .leading, spacing: 8) {
+            if test == nil && model.rest != nil { RestTimerBar(now: now) }
+            if let summary {
+                Text(summary.text).font(.subheadline)
+            }
+            HStack {
+                if summary?.done == true {
+                    Button { camera.stop(); dismiss() } label: { Text("Back to session").frame(maxWidth: .infinity).fontWeight(.semibold) }
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    Button { nextSet() } label: {
+                        Text(summary?.isWarmUp == true ? "Save and start working sets" : "Next set").frame(maxWidth: .infinity).fontWeight(.semibold)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    if summary != nil {
+                        Button { camera.stop(); dismiss() } label: { Text("Session") }
+                            .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .controlSize(.large)
+        }
+        .padding(12)
+        .background(.bar)
+    }
+
+    /// Back to the camera, set up for the program's next set when there is one.
+    private func nextSet() {
+        if model.sessionTargets != nil, let plan = model.sessionPlan() {
+            model.prepareMainSet(plan, loadKg: plan.nextLoadKg)
+        }
+        resultID = nil
+    }
+
+    /// The next set, shown under the rest timer on the camera.
+    private var restDetail: String? {
+        guard model.sessionTargets != nil, let plan = model.sessionPlan(), plan.doneReason == nil else { return nil }
+        return "Next: \(unit.format(kg: plan.nextLoadKg)) \(unit.rawValue) · stop at \(Fmt.percent(plan.prescription.lossCutoffPct)) loss or \(plan.prescription.repCapPerSet) reps"
+    }
+
+    /// Say the next load at the start of rest, when sound cues are on.
+    private func announceNext() {
+        guard UserDefaults.standard.object(forKey: SettingsKey.liveCues) as? Bool ?? true else { return }
+        camera.cues.start()
+        if model.sessionTargets != nil, let plan = model.sessionPlan() {
+            if plan.doneReason != nil { camera.cues.say("Main lift done.") }
+            else { camera.cues.say("Next set, \(unit.format(kg: plan.nextLoadKg)) \(unit == .lb ? "pounds" : "kilos").") }
+        }
+    }
+
+    /// Tones 30 seconds before rest is done and when it is.
+    private func restCues() {
+        guard let r = model.rest, UserDefaults.standard.object(forKey: SettingsKey.liveCues) as? Bool ?? true else { return }
+        let key = r.start.addingTimeInterval(r.extraSec)
+        if restCueKey != key { restCueKey = key; restWarned = false; restDoneSounded = false }
+        let t = r.elapsed(now)
+        camera.cues.start()
+        if !restWarned && r.doneAt > 45 && t >= r.doneAt - 30 && t < r.doneAt { restWarned = true; camera.cues.restWarning() }
+        if !restDoneSounded && t >= r.doneAt { restDoneSounded = true; restWarned = true; camera.cues.restDone() }
     }
 
     private func timeString(_ t: TimeInterval) -> String {

@@ -15,9 +15,11 @@ struct SessionPlan {
     var setsDone: [AnalyzedSet]
     /// Sets of the main lift logged by hand today (no velocity), oldest first.
     var manualDone: [ManualSet]
+    /// Reps the camera missed, added by hand to today's filmed sets.
+    var addedReps: Int
     /// Main-lift sets done today, filmed or by hand.
     var setCount: Int { setsDone.count + manualDone.count }
-    var repCount: Int { setsDone.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +) + manualDone.map(\.reps).reduce(0, +) }
+    var repCount: Int { setsDone.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +) + manualDone.map(\.reps).reduce(0, +) + addedReps }
     var nextLoadKg: Double
     var nextLoadReason: String?
     var doneReason: String?
@@ -109,15 +111,17 @@ extension AppModel {
             let r = Prescriber.nextLoad(after: last.analysis.input.loadKg, firstRepMV: first, prescription: p, stepKg: u.toKg(u.step))
             next = round(r.loadKg); reason = r.reason
         }
-        let manual = manualSets.filter { $0.exerciseID == day.mainExerciseID && Calendar.current.isDateInToday($0.date) }
+        let todays = manualSets.filter { $0.exerciseID == day.mainExerciseID && Calendar.current.isDateInToday($0.date) }
             .sorted { $0.date < $1.date }
+        let manual = todays.filter { $0.addedToSetID == nil }
+        let added = todays.filter { $0.addedToSetID != nil }.map(\.reps).reduce(0, +)
         // A set logged by hand after the last filmed one: keep its load (there's no velocity to adjust from).
         if let m = manual.last, m.date > (done.last?.date ?? .distantPast) {
             next = m.loadKg; reason = nil
         }
-        let reps = done.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +) + manual.map(\.reps).reduce(0, +)
+        let reps = done.compactMap { $0.analysis.setMetrics?.repCount }.reduce(0, +) + manual.map(\.reps).reduce(0, +) + added
         return SessionPlan(day: day, week: week, oneRmKg: orm, readinessLoadKg: target60, readinessSet: rSet, readiness: reading,
-                           readinessDelta: delta, prescription: p, setsDone: Array(done), manualDone: manual,
+                           readinessDelta: delta, prescription: p, setsDone: Array(done), manualDone: manual, addedReps: added,
                            nextLoadKg: next, nextLoadReason: reason,
                            doneReason: Prescriber.liftDone(setsDone: done.count + manual.count, repsDone: reps, prescription: p),
                            lineLearned: vl?.learned ?? false)
@@ -135,7 +139,8 @@ extension AppModel {
         let lo = plan.prescription.zoneLow.map { ($0 * 100).rounded() / 100 }
         let hi = plan.prescription.zoneHigh.map { ($0 * 100).rounded() / 100 }
         sessionTargets = SessionTargets(exerciseID: id, lossCutoffPct: plan.prescription.lossCutoffPct,
-                                        zone: lo.flatMap { l in hi.flatMap { h in l < h ? l...h : nil } })
+                                        zone: lo.flatMap { l in hi.flatMap { h in l < h ? l...h : nil } },
+                                        restLowMin: plan.prescription.restLowMin, restHighMin: plan.prescription.restHighMin)
     }
 
     /// Close today's session: advance the block, and set each accessory's next load from its reps and RIR.
@@ -184,5 +189,48 @@ extension AppModel {
                 return ProfileDrift.Check(date: s.date, loadKg: s.analysis.input.loadKg, firstRepMV: mv)
             }
         return ProfileDrift.retestSuggested(checks, line: line, mvt: mvt, oneRmKg: orm)
+    }
+
+    /// After a program set: what happens next, in plain words (readiness result or next load).
+    func afterSetSummary(setID: UUID) -> (text: String, isWarmUp: Bool, done: Bool)? {
+        guard sessionTargets != nil, let plan = sessionPlan() else { return nil }
+        let u = unit
+        let lb = { (kg: Double) in "\(u.format(kg: kg)) \(u.rawValue)" }
+        let p = plan.prescription
+        if plan.readinessSet?.id == setID {
+            let diff = p.loadKg - p.plannedLoadKg
+            let change: String
+            if abs(u.fromKg(diff)) < u.step / 2 { change = "Today's load stays at \(lb(p.loadKg)), as planned." }
+            else if diff < 0 { change = "Today's load drops \(lb(-diff)) to \(lb(p.loadKg))." }
+            else { change = "Today's load goes up \(lb(diff)) to \(lb(p.loadKg))." }
+            if let r = plan.readiness, let d = plan.readinessDelta {
+                return (String(format: "Warm-up saved. Readiness: %@ (%+.2f m/s vs your profile). ", r.rawValue, d) + change, true, false)
+            }
+            return ("Warm-up saved as today's 60% set. Readiness starts next session, once your velocity targets are learned from today's sets. " + change, true, false)
+        }
+        if let done = plan.doneReason { return ("\(done) Log your accessories, then finish the session.", false, true) }
+        var t = "Next set: \(lb(plan.nextLoadKg))"
+        if let why = plan.nextLoadReason { t += ". " + why } else { t += "." }
+        t += " Stop at \(Fmt.percent(p.lossCutoffPct)) loss or \(p.repCapPerSet) reps."
+        return (t, false, false)
+    }
+
+    /// Start the rest timer after a set, with the program's rest range or 2–3 minutes.
+    func startRest() {
+        let lo = (sessionTargets?.restLowMin ?? 2) * 60, hi = (sessionTargets?.restHighMin ?? 3) * 60
+        rest = RestTimerState(start: Date(), lowSec: lo, highSec: max(hi, lo))
+    }
+
+    /// Reps the camera missed in a filmed set, added by hand.
+    func addedReps(to setID: UUID) -> Int {
+        manualSets.filter { $0.addedToSetID == setID }.map(\.reps).reduce(0, +)
+    }
+
+    func setAddedReps(_ n: Int, to set: AnalyzedSet) {
+        manualSets.removeAll { $0.addedToSetID == set.id }
+        if n > 0 {
+            manualSets.append(ManualSet(date: set.date, exerciseID: set.exerciseID, loadKg: set.analysis.input.loadKg,
+                                        reps: n, rir: nil, addedToSetID: set.id))
+        }
     }
 }

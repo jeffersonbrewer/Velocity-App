@@ -57,7 +57,8 @@ public struct AccessoryExercise: Codable, Hashable, Identifiable, Sendable {
     }
 
     /// Loaded with a weight the lifter chooses (dumbbell loads are per hand).
-    public var takesLoad: Bool { !ballistic && equipment != .bodyweight }
+    /// Any implement takes a load, ballistic ones too (a dynamic curl or a swing still uses a weight).
+    public var takesLoad: Bool { equipment != .bodyweight }
 }
 
 public enum AccessoryLibraryData {

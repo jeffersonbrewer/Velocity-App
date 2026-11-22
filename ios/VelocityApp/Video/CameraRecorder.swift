@@ -309,6 +309,7 @@ extension CameraRecorder: AVCaptureVideoDataOutputSampleBufferDelegate {
             let circle = live.tracker.add(image, time: time)
             CVPixelBufferUnlockBaseAddress(pixels, .readOnly)
             let events = circle.map { live.counter.add(time: time, yPixels: $0.y, radiusPx: $0.r) } ?? []
+            if circle == nil { live.counter.missing(time: time) }
             let found = circle != nil
             let settled = live.counter.settled
             DispatchQueue.main.async {

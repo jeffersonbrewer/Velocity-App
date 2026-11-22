@@ -66,6 +66,8 @@ final class AppModel {
     /// A program session's cutoff and zone for its main lift, used while its camera is open
     /// without changing the lift's own targets on Today.
     var sessionTargets: SessionTargets?
+    /// The rest timer between sets, shown on the camera and session screens without blocking them.
+    var rest: RestTimerState?
     var selectedTab: AppTab = .today
     /// The training block being followed, if any.
     var program: Program? = ProgramStore.load() { didSet { ProgramStore.save(program) } }
@@ -254,4 +256,17 @@ struct SessionTargets {
     var exerciseID: String
     var lossCutoffPct: Double?
     var zone: ClosedRange<Double>?
+    var restLowMin: Double?
+    var restHighMin: Double?
+}
+
+/// Rest between sets: when it started and how long the plan calls for.
+struct RestTimerState: Equatable {
+    var start: Date
+    var lowSec: Double      // rest is "done" here
+    var highSec: Double
+    var extraSec: Double = 0
+
+    func elapsed(_ now: Date) -> Double { now.timeIntervalSince(start) }
+    var doneAt: Double { lowSec + extraSec }
 }

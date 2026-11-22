@@ -9,6 +9,8 @@ struct ManualSet: Codable, Hashable, Identifiable {
     var loadKg: Double
     var reps: Int
     var rir: Int?
+    /// Set when these are reps the camera missed in a filmed set: they add reps, not a set.
+    var addedToSetID: UUID?
 }
 
 enum ManualSetStore {
@@ -71,11 +73,13 @@ struct SessionDebrief: Codable, Hashable, Identifiable {
     var accessories: [AccessoryChange]?
     /// Main-lift sets logged by hand (nil in debriefs saved before they existed).
     var manualSets: [ManualSet]?
+    /// Reps the camera missed, added by hand to filmed sets.
+    var addedReps: Int?
 
     var manual: [ManualSet] { manualSets ?? [] }
     /// Sets of the main lift done in all, filmed or by hand.
     var mainSetCount: Int { setIDs.count + manual.count }
-    var totalReps: Int { reps + manual.map(\.reps).reduce(0, +) }
+    var totalReps: Int { reps + manual.map(\.reps).reduce(0, +) + (addedReps ?? 0) }
 
     var liftName: String { ExerciseCatalog.exercise(id: exerciseID)?.name ?? exerciseID }
     var bestMVChange: Double? { bestMV.flatMap { b in compareMV.map { b - $0 } } }
@@ -138,7 +142,7 @@ extension AppModel {
             avgLossPct: losses.isEmpty ? nil : losses.reduce(0, +) / Double(losses.count), lossCutoffPct: p.lossCutoffPct,
             oneRmKg: plan.oneRmKg, drift: profileDrift(plan.day.mainExerciseID),
             accessoriesLogged: accessoryLog.values.filter { sets in sets.contains { $0.reps > 0 } }.count,
-            manualSets: plan.manualDone)
+            manualSets: plan.manualDone, addedReps: plan.addedReps)
     }
 
     /// Fill in the next session once the block has moved on.
@@ -214,9 +218,16 @@ enum DebriefText {
                 : "so today started \(u.format(kg: abs(diff))) \(u.rawValue) \(diff > 0 ? "heavier" : "lighter") than planned"
             s.append("\(warm) moved \(speed) (\(r.rawValue.lowercased())), \(effect).")
         } else {
-            s.append("No readiness reading today, so the session ran at the planned load.")
+            if let w = d.readinessLoadKg {
+                s.append("Your 60% warm-up at \(u.format(kg: w)) \(u.rawValue) was recorded. Readiness starts next session, once your velocity targets are learned from today's sets, so today ran at the planned load.")
+            } else {
+                s.append("No readiness reading today, so the session ran at the planned load.")
+            }
         }
         let m = d.manual
+        if let a = d.addedReps, a > 0 {
+            s.append("\(a) rep\(a == 1 ? "" : "s") the camera missed \(a == 1 ? "was" : "were") added by hand; they count toward volume but have no velocity.")
+        }
         if !m.isEmpty {
             let loads = Set(m.map { u.format(kg: $0.loadKg) })
             let at = loads.count == 1 ? " at \(loads.first!) \(u.rawValue)" : ""
