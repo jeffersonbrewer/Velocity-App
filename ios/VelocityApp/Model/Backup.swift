@@ -72,7 +72,7 @@ enum BackupStore {
     static func fileName(_ date: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd-HHmm"
+        f.dateFormat = "yyyy-MM-dd-HHmmss"
         return "velocity-backup-\(f.string(from: date)).json"
     }
 
