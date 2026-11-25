@@ -640,6 +640,10 @@ struct CameraSetupView: View {
     /// Back to the camera, set up for the program's next set when there is one.
     private func nextSet() {
         if model.sessionTargets != nil, let plan = model.sessionPlan() {
+            // The lift is finished: go to the next lift's warm-up, or back to the session for accessories.
+            if plan.doneReason != nil {
+                camera.stop(); dismiss(); return
+            }
             model.prepareMainSet(plan, loadKg: plan.nextLoadKg)
         }
         resultID = nil

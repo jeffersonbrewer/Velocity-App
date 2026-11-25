@@ -84,9 +84,13 @@ public final class LiveRepCounter {
     /// A frame where the plate wasn't found. Once at least one rep is counted and no rep is under
     /// way, a plate hidden for `settleSeconds` also ends the set: racking the bar often puts the
     /// plate behind an upright or the lifter's hands, so it can't be seen sitting still.
+    ///
+    /// When the plate vanishes during what looks like a lift (racking a bench press often moves the
+    /// bar up and back behind the uprights), being hidden for `settleSeconds` also ends the set.
     public func missing(time t: Double) {
-        guard let s = settleSeconds, !settled, !reps.isEmpty, upStart == nil, let seen = lastSeenT else { return }
-        if t - seen >= s { settled = true }
+        guard let s = settleSeconds, !settled, !reps.isEmpty, let seen = lastSeenT else { return }
+        if upStart == nil { if t - stillSince >= s { settled = true } }
+        else if t - seen >= s { settled = true }
     }
 
     /// Add one tracked frame: time in seconds, plate centre y and radius in image pixels
@@ -107,6 +111,10 @@ public final class LiveRepCounter {
         }
         if t - t0 > 0.25 {            // tracking gap: start the grid again rather than draw a line through it
             nextGridT = t
+            // The plate found only now and then (partly hidden in the rack): still counts as still
+            // if it's where it was.
+            if let s = settleSeconds, !settled, !reps.isEmpty, upStart == nil,
+               abs(y - y0) <= stillBand, t - stillSince >= s { settled = true }
             return []
         }
         var out: [RepEvent] = []

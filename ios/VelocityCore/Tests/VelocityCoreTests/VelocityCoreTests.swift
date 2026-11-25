@@ -449,8 +449,10 @@ final class LiveRepTests: XCTestCase {
         for k in s.t.indices { reps += live.add(time: s.t[k], yPixels: s.yPx[k], radiusPx: 100).count }
         XCTAssertEqual(reps, 2)
         let last = s.t.last!
-        live.missing(time: last + 2)
-        XCTAssertFalse(live.settled, "not before settleSeconds")
+        XCTAssertFalse(live.settled, "not from the frames alone")
+        live.missing(time: last + 0.1)
+        XCTAssertFalse(live.settled, "not right after the bar stopped")
+        // The wait counts from the bar's last movement, seen or hidden.
         live.missing(time: last + 3.1)
         XCTAssertTrue(live.settled)
         // Hidden before any rep: never ends the set.
@@ -468,5 +470,47 @@ final class OlympicTemplateTests: XCTestCase {
         XCTAssertEqual(t.repCapPerSet, 3)
         XCTAssertEqual(GoalTemplate.forLift(.power, exerciseID: "back_squat"), GoalTemplate.default(.power))
         XCTAssertFalse(ExerciseCatalog.exercise(id: "push_jerk")!.allowsOneRm)
+    }
+}
+
+final class LiveSettleTests: XCTestCase {
+    /// Two reps, then the bar sits still but the plate is found only every 0.5 s (partly hidden).
+    func testSettlesWhenPlateIsFoundOnlyNowAndThen() {
+        let live = LiveRepCounter(lossCutoffPct: 20, repCap: nil, settleSeconds: 3)
+        var t = 0.0
+        func frame(_ yPx: Double) { _ = live.add(time: t, yPixels: yPx, radiusPx: 100); t += 1.0 / 120 }
+        // 100 px radius => 0.00225 m/px; a 0.5 m lift = 222 px.
+        for _ in 0..<60 { frame(800) }
+        for _ in 0..<2 {
+            for k in 0..<96 { frame(800 - 222 * sin(Double(k) / 96 * .pi / 2)) }   // up
+            for _ in 0..<30 { frame(578) }
+            for k in 0..<96 { frame(578 + 222 * sin(Double(k) / 96 * .pi / 2)) }   // down
+            for _ in 0..<30 { frame(800) }
+        }
+        XCTAssertEqual(live.reps.count, 2)
+        XCTAssertFalse(live.settled)
+        let end = t
+        while t < end + 5 { _ = live.add(time: t, yPixels: 800, radiusPx: 100); t += 0.5 }
+        XCTAssertTrue(live.settled)
+    }
+
+    /// The plate disappears while the bar is moving up after the last rep (racking): ends the set.
+    func testSettlesWhenPlateHiddenDuringRacking() {
+        let live = LiveRepCounter(lossCutoffPct: 20, repCap: nil, settleSeconds: 3)
+        var t = 0.0
+        func frame(_ yPx: Double) { _ = live.add(time: t, yPixels: yPx, radiusPx: 100); t += 1.0 / 120 }
+        for _ in 0..<60 { frame(800) }
+        for k in 0..<96 { frame(800 - 222 * sin(Double(k) / 96 * .pi / 2)) }
+        for _ in 0..<30 { frame(578) }
+        for k in 0..<96 { frame(578 + 222 * sin(Double(k) / 96 * .pi / 2)) }
+        for _ in 0..<30 { frame(800) }
+        XCTAssertEqual(live.reps.count, 1)
+        for k in 0..<40 { frame(800 - 100 * Double(k) / 40) }   // starts moving up to rack, then hidden
+        XCTAssertTrue(live.inRep)
+        let hidden = t
+        live.missing(time: hidden + 1)
+        XCTAssertFalse(live.settled)
+        live.missing(time: hidden + 3.2)
+        XCTAssertTrue(live.settled)
     }
 }
