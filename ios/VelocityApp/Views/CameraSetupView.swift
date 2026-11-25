@@ -52,18 +52,6 @@ struct CameraSetupView: View {
                 SetResultsView(setID: id)
                     .safeAreaInset(edge: .bottom) { afterSetPanel(id) }
             }
-            .onAppear {
-                UIApplication.shared.isIdleTimerDisabled = true  // keep the screen on between sets
-                camera.start()
-                applyCurrentStep()
-            }
-            .onDisappear {
-                UIApplication.shared.isIdleTimerDisabled = false
-                dimmer.restore()
-                camera.cues.stop()
-                model.nextSetRepCap = nil
-                model.sessionTargets = nil
-            }
             .onChange(of: resultID) { _, id in if id == nil { camera.start() } }
             .onReceive(ticker) { now = $0; restCues() }
             .onChange(of: camera.liveSettled) { _, done in
@@ -82,6 +70,19 @@ struct CameraSetupView: View {
                     }
                 }
             }
+        }
+        // On the stack itself, not its first screen: pushing the set results mustn't end the session.
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true  // keep the screen on between sets
+            camera.start()
+            applyCurrentStep()
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+            dimmer.restore()
+            camera.cues.stop()
+            model.nextSetRepCap = nil
+            model.sessionTargets = nil
         }
     }
 

@@ -88,9 +88,8 @@ public final class LiveRepCounter {
     /// When the plate vanishes during what looks like a lift (racking a bench press often moves the
     /// bar up and back behind the uprights), being hidden for `settleSeconds` also ends the set.
     public func missing(time t: Double) {
-        guard let s = settleSeconds, !settled, !reps.isEmpty, let seen = lastSeenT else { return }
-        if upStart == nil { if t - stillSince >= s { settled = true } }
-        else if t - seen >= s { settled = true }
+        guard let s = settleSeconds, !settled, !reps.isEmpty, lastSeenT != nil else { return }
+        if t - stillSince >= s { settled = true }
     }
 
     /// Add one tracked frame: time in seconds, plate centre y and radius in image pixels
@@ -113,7 +112,7 @@ public final class LiveRepCounter {
             nextGridT = t
             // The plate found only now and then (partly hidden in the rack): still counts as still
             // if it's where it was.
-            if let s = settleSeconds, !settled, !reps.isEmpty, upStart == nil,
+            if let s = settleSeconds, !settled, !reps.isEmpty,
                abs(y - y0) <= stillBand, t - stillSince >= s { settled = true }
             return []
         }
@@ -134,8 +133,10 @@ public final class LiveRepCounter {
         ys.append(yf); vs.append(v)
         let i = vs.count - 1
         if i > 0 && vs[i - 1] <= 0 && v > 0 { lastZeroUp = i }
-        if stillY == nil || abs(yf - stillY!) > stillBand || upStart != nil { stillY = yf; stillSince = g }
-        if let s = settleSeconds, !settled, !reps.isEmpty, upStart == nil, g - stillSince >= s { settled = true }
+        // Stillness is about position only: standing sway of a few millimetres can look like the start
+        // of a lift to the velocity threshold, but a real rep leaves the 3 cm band within a moment.
+        if stillY == nil || abs(yf - stillY!) > stillBand { stillY = yf; stillSince = g }
+        if let s = settleSeconds, !settled, !reps.isEmpty, g - stillSince >= s { settled = true }
 
         if let s = upStart {
             if v > vThresh {

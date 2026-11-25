@@ -302,6 +302,17 @@ final class LearnedLineTests: XCTestCase {
         pts = [130.0, 135].map { LearnedLine.Point(date: day(0), loadKg: $0, bestMeanVelocity: mv($0)) }
         XCTAssertNil(LearnedLine.fit(pts, oneRmKg: 170, before: day(2)))         // loads too close together
     }
+
+    /// Nov 24 trap bar data: scatter between sets at one load no longer blocks the line.
+    func testScatterAtOneLoadIsAveraged() throws {
+        let day = { (d: Double) in Date(timeIntervalSince1970: 1_790_000_000 + d * 86_400) }
+        let raw: [(Double, Double, Double)] = [(0, 77.1, 0.83), (0, 102.1, 0.73), (0, 102.1, 0.67), (0, 102.1, 0.74),
+                                                (7, 77.1, 0.81), (7, 106.6, 0.59), (7, 106.6, 0.62), (7, 106.6, 0.64), (7, 106.6, 0.60)]
+        let pts = raw.map { LearnedLine.Point(date: day($0.0), loadKg: $0.1, bestMeanVelocity: $0.2) }
+        let line = try XCTUnwrap(LearnedLine.fit(pts, oneRmKg: 127, before: day(9)))
+        XCTAssertLessThan(line.slope, 0)
+        XCTAssertNotNil(LearnedLine.fit(Array(pts.prefix(4)), oneRmKg: 127, before: day(7)), "week 1 alone gives a line")
+    }
 }
 
 final class AccessoryTests: XCTestCase {
@@ -512,5 +523,30 @@ final class LiveSettleTests: XCTestCase {
         XCTAssertFalse(live.settled)
         live.missing(time: hidden + 3.2)
         XCTAssertTrue(live.settled)
+    }
+
+    /// After the last rep the plate centre jitters by a few millimetres (tracker noise, standing sway).
+    func testSettlesDespiteStandingJitter() {
+        let live = LiveRepCounter(lossCutoffPct: 20, repCap: nil, settleSeconds: 3)
+        var t = 0.0
+        var rng = SystemRandomNumberGenerator()
+        func frame(_ yPx: Double) { _ = live.add(time: t, yPixels: yPx, radiusPx: 100); t += 1.0 / 120 }
+        for _ in 0..<60 { frame(800) }
+        for _ in 0..<2 {
+            for k in 0..<96 { frame(800 - 222 * sin(Double(k) / 96 * .pi / 2)) }
+            for _ in 0..<30 { frame(578) }
+            for k in 0..<96 { frame(578 + 222 * sin(Double(k) / 96 * .pi / 2)) }
+            for _ in 0..<30 { frame(800) }
+        }
+        XCTAssertEqual(live.reps.count, 2)
+        let end = t
+        // About 1.5 mm sd jitter (0.67 px at 0.00225 m/px), with slow sway of ±4 mm.
+        while t < end + 6 && !live.settled {
+            let noise = Double.random(in: -1.2...1.2, using: &rng) + 1.8 * sin(t * 3)
+            frame(800 + noise)
+        }
+        XCTAssertTrue(live.settled)
+        XCTAssertLessThan(t - end, 3.6)
+        XCTAssertEqual(live.reps.count, 2, "jitter is not a rep")
     }
 }

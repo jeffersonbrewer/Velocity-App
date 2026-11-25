@@ -226,8 +226,23 @@ public enum LearnedLine {
         let earlier = points.filter { $0.date < cutoff && $0.loadKg >= 0.3 * oneRmKg }
         let days = Set(earlier.map { calendar.startOfDay(for: $0.date) }).sorted(by: >).prefix(sessions)
         let use = earlier.filter { days.contains(calendar.startOfDay(for: $0.date)) }
-        guard let lo = use.map(\.loadKg).min(), let hi = use.map(\.loadKg).max(), hi - lo >= 0.10 * oneRmKg,
-              let line = try? LoadVelocityLine.fit(loadsKg: use.map(\.loadKg), meanVelocities: use.map(\.bestMeanVelocity)),
+        // One point per load per day (the mean of its sets), like a profile test: set-to-set scatter
+        // at one load would otherwise sink the fit even when the sessions agree.
+        var groups: [String: [Point]] = [:]
+        for p in use {
+            let dayKey = Int(calendar.startOfDay(for: p.date).timeIntervalSince1970)
+            let loadKey = Int((p.loadKg / 0.5).rounded())
+            groups["\(dayKey)-\(loadKey)", default: []].append(p)
+        }
+        var loads: [Double] = [], mvs: [Double] = []
+        for g in groups.values {
+            let n = Double(g.count)
+            var l = 0.0, v = 0.0
+            for p in g { l += p.loadKg; v += p.bestMeanVelocity }
+            loads.append(l / n); mvs.append(v / n)
+        }
+        guard let lo = loads.min(), let hi = loads.max(), hi - lo >= 0.10 * oneRmKg,
+              let line = try? LoadVelocityLine.fit(loadsKg: loads, meanVelocities: mvs),
               line.r2 >= 0.8 else { return nil }
         return line
     }
