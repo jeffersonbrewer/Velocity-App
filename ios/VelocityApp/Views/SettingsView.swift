@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.cutoffHz) private var cutoffHz = 8.0
     @AppStorage(SettingsKey.plateDiameterCm) private var plateCm = 45.0
     @AppStorage(SettingsKey.tiltCorrection) private var tilt = true
+    @AppStorage(SettingsKey.analyzeEveryFrame) private var everyFrame = false
     @AppStorage(SettingsKey.keepSetVideos) private var keepVideos = false
     @AppStorage(SettingsKey.liveCues) private var liveCues = true
     @AppStorage(SettingsKey.speakReps) private var speakReps = false
@@ -65,9 +66,10 @@ struct SettingsView: View {
                         HStack { Text("Smoothing filter"); Spacer(); Text(String(format: "%.1f Hz", cutoffHz)).foregroundStyle(Theme.muted) }
                     }
                     Toggle("Correct for camera tilt", isOn: $tilt)
+                    Toggle("Analyze every frame (240 fps)", isOn: $everyFrame)
                     Button("Restore defaults") { plateCm = 45; cutoffHz = 8; tilt = true }
                 } header: { Text("Measurement") } footer: {
-                    Text("Bumper and competition plates are 45 cm across. The 8 Hz filter is the setting validated against GymAware; it stays adjustable while peak velocity is being checked. Changes apply to sets analyzed after the change.")
+                    Text("Bumper and competition plates are 45 cm across. The 8 Hz filter is the setting validated against GymAware; it stays adjustable while peak velocity is being checked. Sets are analyzed at 120 frames a second, about twice as fast as every frame; turn on every frame for validation work. Changes apply to sets analyzed after the change.")
                 }
 
                 BackupSection()

@@ -242,6 +242,12 @@ enum SettingsKey {
         return d.object(forKey: autoStopSeconds) as? Double ?? 3
     }
     static let exercisePrefs = "exercisePrefs"     // JSON [exercise id: ExercisePrefs]
+    static let analyzeEveryFrame = "analyzeEveryFrame"  // analyze at the full 240 fps (default off: 120 fps)
+
+    /// Frames a second the after-set analysis uses, or nil for every frame.
+    static func analysisMaxRate(_ d: UserDefaults = .standard) -> Double? {
+        d.bool(forKey: analyzeEveryFrame) ? nil : 120
+    }
 
     static func analysisSettings(_ d: UserDefaults = .standard) -> AnalysisSettings {
         let cutoff = d.object(forKey: cutoffHz) as? Double ?? 8.0

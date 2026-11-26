@@ -22,9 +22,12 @@ enum VideoTracker {
         var plateFound: Bool
     }
 
-    /// Track the plate in every frame. Uses each frame's own timestamp, because iPhone slow-motion
-    /// originals have a variable frame rate (240 fps capture with dropped frames).
-    static func track(_ asset: AVAsset, hint: CGPoint? = nil, progress: @escaping @Sendable (Progress) -> Void) async throws -> Track {
+    /// Track the plate frame by frame, at most `maxRate` frames a second (nil: every frame). Uses
+    /// each frame's own timestamp, because iPhone slow-motion originals have a variable frame rate
+    /// (240 fps capture with dropped frames). 120 fps halves the work; mean velocity matched 240 fps
+    /// in the Nov 9 trap bar check.
+    static func track(_ asset: AVAsset, hint: CGPoint? = nil, maxRate: Double? = SettingsKey.analysisMaxRate(),
+                      progress: @escaping @Sendable (Progress) -> Void) async throws -> Track {
         guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else {
             throw VideoTrackerError.noVideoTrack
         }
@@ -46,6 +49,9 @@ enum VideoTracker {
 
         let tracker = PlateTracker(hint: hint.map { (Double($0.x), Double($0.y)) })
         var firstTime: Double? = nil
+        var lastUsed = -Double.infinity
+        // A little under the frame spacing, so 240 fps jitter doesn't skip two frames in a row.
+        let minGap = maxRate.map { 0.75 / $0 } ?? 0
         var lastReport = -1.0
         while reader.status == .reading {
             if Task.isCancelled { reader.cancelReading(); throw CancellationError() }
@@ -54,6 +60,8 @@ enum VideoTracker {
                 guard let pixels = CMSampleBufferGetImageBuffer(sample) else { return true }
                 let time = CMSampleBufferGetPresentationTimeStamp(sample).seconds
                 if firstTime == nil { firstTime = time }
+                if time - lastUsed < minGap { return true }   // skipped before any copying
+                lastUsed = time
 
                 CVPixelBufferLockBaseAddress(pixels, .readOnly)
                 defer { CVPixelBufferUnlockBaseAddress(pixels, .readOnly) }
