@@ -69,7 +69,7 @@ struct ProfileTestSetupView: View {
             .onChange(of: loadCount) { _, _ in rebuild() }
             .onChange(of: maxSingle) { _, _ in rebuild() }
             .onChange(of: unitRaw) { _, _ in rebuild() }
-            .fullScreenCover(item: $running, onDismiss: { dismiss() }) { plan in
+            .fullScreenCover(item: $running, onDismiss: { model.endCameraSession(); dismiss() }) { plan in
                 CameraSetupView(test: plan)
             }
         }

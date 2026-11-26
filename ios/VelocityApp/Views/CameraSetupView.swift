@@ -71,7 +71,7 @@ struct CameraSetupView: View {
                 }
             }
         }
-        // On the stack itself, not its first screen: pushing the set results mustn't end the session.
+        // On the stack itself, not its first screen, so pushing the set results doesn't fire them.
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true  // keep the screen on between sets
             camera.start()
@@ -81,8 +81,8 @@ struct CameraSetupView: View {
             UIApplication.shared.isIdleTimerDisabled = false
             dimmer.restore()
             camera.cues.stop()
-            model.nextSetRepCap = nil
-            model.sessionTargets = nil
+            // Session targets and the rep cap are cleared by whoever presented the camera, once it's
+            // dismissed: lifecycle events can fire inside the cover while it's still up.
         }
     }
 

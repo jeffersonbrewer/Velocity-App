@@ -30,7 +30,7 @@ struct ProgramSessionView: View {
         .keyboardDoneButton()
         .navigationTitle(finished == nil ? "Today's session" : "Session debrief")
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
+        .fullScreenCover(isPresented: $showCamera, onDismiss: { model.endCameraSession() }) { CameraSetupView() }
         .sheet(item: $logging) { draft in
             ManualSetSheet(draft: draft, unit: unit) { d in
                 model.manualSets.append(ManualSet(date: Date(), exerciseID: d.exerciseID, loadKg: d.loadKg, reps: d.reps, rir: d.rir))

@@ -239,6 +239,12 @@ extension AppModel {
         return (t, false, false)
     }
 
+    /// The camera has closed: the program's cutoff, zone and rep cap stop applying.
+    func endCameraSession() {
+        sessionTargets = nil
+        nextSetRepCap = nil
+    }
+
     /// Start the rest timer after a set, with the program's rest range or 2–3 minutes.
     func startRest() {
         let lo = (sessionTargets?.restLowMin ?? 2) * 60, hi = (sessionTargets?.restHighMin ?? 3) * 60

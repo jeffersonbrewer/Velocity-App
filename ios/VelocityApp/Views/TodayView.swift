@@ -48,7 +48,7 @@ struct TodayView: View {
             .navigationDestination(for: TodayRoute.self) { route in
                 switch route { case .profile(let id): ProfileView(exerciseID: id) }
             }
-            .fullScreenCover(isPresented: $showCamera) { CameraSetupView() }
+            .fullScreenCover(isPresented: $showCamera, onDismiss: { model.endCameraSession() }) { CameraSetupView() }
             .sheet(isPresented: $editingTargets) { TargetsSheet(exerciseID: model.currentExerciseID) }
             .sheet(isPresented: $testing) { ProfileTestSetupView(exerciseID: model.currentExerciseID) }
             .fileImporter(isPresented: $showFiles, allowedContentTypes: [.movie, .quickTimeMovie, .mpeg4Movie]) { result in
